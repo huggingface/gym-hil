@@ -231,8 +231,11 @@ class GamepadController(InputController):
         print(f"Initialized gamepad: {self.joystick.get_name()}")
 
         print("Gamepad controls:")
+        print("  RB button: Intervention")
         print("  Left analog stick: Move in X-Y plane")
         print("  Right analog stick (vertical): Move in Z axis")
+        print("  Back button: Close gripper")
+        print("  Start button: Open gripper")
         print("  B/Circle button: Exit")
         print("  Y/Triangle button: End episode with SUCCESS")
         print("  A/Cross button: End episode with FAILURE")
@@ -263,11 +266,11 @@ class GamepadController(InputController):
                 elif event.button == 0:
                     self.episode_end_status = "rerecord_episode"
 
-                # RB button (6) for closing gripper
+                # Back button (6) for closing gripper
                 elif event.button == 6:
                     self.close_gripper_command = True
 
-                # LT button (7) for opening gripper
+                # Start button (7) for opening gripper
                 elif event.button == 7:
                     self.open_gripper_command = True
 
