@@ -120,19 +120,6 @@ class PassiveViewerWrapper(gym.Wrapper):
                         pass
                                 # Prevent the underlying env from trying to close it again.
                 base_env._viewer = None
-            elif self.viewer_type == "dual":
-                viewer_1 = base_env._viewer_1
-                viewer_2 = base_env._viewer_2
-                if viewer_1 is not None and hasattr(viewer_1, "close") and callable(viewer_1.close):
-                    try:  # noqa: SIM105
-                        viewer_1.close()
-                    except Exception:
-                        pass
-                if viewer_2 is not None and hasattr(viewer_2, "close") and callable(viewer_2.close):
-                    try:  # noqa: SIM105
-                        viewer_2.close()
-                    except Exception:
-                        pass
 
         # 2. Close the passive viewer launched by this wrapper.
         try:  # noqa: SIM105
