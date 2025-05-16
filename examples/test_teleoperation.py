@@ -53,6 +53,7 @@ def main():
     env = gym.make(
         "gym_hil/PandaPickCubeGamepad-v0",
         render_mode=args.render_mode,
+        viewer_type="dual",
         image_obs=True,
         step_size=args.step_size,
         use_gamepad=not args.use_keyboard,

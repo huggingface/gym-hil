@@ -15,6 +15,7 @@ from gym_hil.wrappers.viewer_wrapper import PassiveViewerWrapper
 def wrap_env(
     env: gym.Env,
     use_viewer: bool = False,
+    viewer_type: str = "single",
     use_gamepad: bool = False,
     use_gripper: bool = True,
     auto_reset: bool = False,
@@ -27,6 +28,7 @@ def wrap_env(
     Args:
         env: The base environment to wrap
         use_viewer: Whether to add a passive viewer
+        viewer_type: Whether to use a single or dual viewer
         use_gamepad: Whether to use gamepad instead of keyboard controls
         use_gripper: Whether to enable gripper control
         auto_reset: Whether to automatically reset the environment when episode ends
@@ -39,7 +41,7 @@ def wrap_env(
     """
     # Apply wrappers in the correct order
     if use_viewer:
-        env = PassiveViewerWrapper(env, show_left_ui=show_ui, show_right_ui=show_ui)
+        env = PassiveViewerWrapper(env, viewer_type=viewer_type, show_left_ui=show_ui, show_right_ui=show_ui)
 
     if use_gripper:
         env = GripperPenaltyWrapper(env, penalty=gripper_penalty)
@@ -64,6 +66,7 @@ def wrap_env(
 def make_env(
     env_id: str,
     use_viewer: bool = False,
+    viewer_type: str = "single",
     use_gamepad: bool = False,
     use_gripper: bool = True,
     auto_reset: bool = False,
@@ -77,6 +80,7 @@ def make_env(
     Args:
         env_id: The ID of the base environment to create
         use_viewer: Whether to add a passive viewer
+        viewer_type: Whether to use a single or dual viewer
         use_gamepad: Whether to use gamepad instead of keyboard controls
         use_gripper: Whether to enable gripper control
         auto_reset: Whether to automatically reset the environment when episode ends
@@ -97,6 +101,7 @@ def make_env(
     return wrap_env(
         env,
         use_viewer=use_viewer,
+        viewer_type=viewer_type,
         use_gamepad=use_gamepad,
         use_gripper=use_gripper,
         auto_reset=auto_reset,
