@@ -92,10 +92,36 @@ imageio.mimsave("franka_render_test.mp4", frames, fps=20)
 For Franka environments, you can use the gamepad or keyboard to control the robot:
 
 ```bash
-python gym_hil/examples/test_teleoperation.py
+python examples/test_teleoperation.py
 ```
 
 To run the teleoperation with keyboard you can use the option `--use-keyboard`.
+
+### Controller Configuration
+
+You can customize gamepad button and axis mappings by providing a controller configuration file:
+
+```bash
+python examples/test_teleoperation.py --controller-config path/to/controller_config.json
+```
+
+When using gym-hil as an installed package, you can create a `controller_config.json` file in your project directory, or specify a custom path. The system will look for the configuration file in the following locations (in order):
+
+1. The path specified with the `--controller-config` argument
+2. A file named `controller_config.json` in the current working directory
+3. The default configuration file included with the package
+
+You can also pass the configuration path when creating an environment in your code:
+
+```python
+env = gym.make(
+    "gym_hil/PandaPickCubeGamepad-v0",
+    controller_config_path="path/to/controller_config.json",
+    # other parameters...
+)
+```
+
+See [CONTROLLER_CONFIG.md](gym_hil/CONTROLLER_CONFIG.md) for more details on the configuration file format and how to customize it for different controllers.
 
 ### Human-in-the-Loop Wrappers
 

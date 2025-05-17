@@ -14,6 +14,88 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import json
+import os
+import logging
+from pathlib import Path
+
+
+def load_controller_config(controller_name=None, config_path=None):
+    """
+    Load controller configuration from JSON file.
+    
+    Args:
+        controller_name: Name of the controller to load configuration for.
+                         If None, will use 'default' configuration.
+        config_path: Path to the controller configuration JSON file.
+                     If None, will look for controller_config.json in multiple locations.
+    
+    Returns:
+        Dictionary containing controller configuration.
+    """
+    # List of paths to check for the configuration file
+    paths_to_check = []
+    
+    # If a specific path is provided, check it first
+    if config_path is not None:
+        paths_to_check.append(Path(config_path))
+    
+    # Check in the current working directory
+    paths_to_check.append(Path.cwd() / "controller_config.json")
+    
+    # Check in the gym_hil package directory
+    module_dir = Path(__file__).parent.parent
+    paths_to_check.append(module_dir / "controller_config.json")
+    
+    # Try each path in order
+    config = None
+    for path in paths_to_check:
+        try:
+            with open(path, 'r') as f:
+                config = json.load(f)
+                logging.info(f"Loaded controller configuration from {path}")
+                break
+        except (FileNotFoundError, json.JSONDecodeError):
+            continue
+    
+    # If no configuration file was found, use default values
+    if config is None:
+        logging.warning("No controller configuration file found. Using default values.")
+        config = {
+            "default": {
+                "axes": {
+                    "left_x": 0,
+                    "left_y": 1,
+                    "right_x": 2,
+                    "right_y": 3
+                },
+                "buttons": {
+                    "a": 0,
+                    "b": 1,
+                    "x": 2,
+                    "y": 3,
+                    "lb": 4,
+                    "rb": 5,
+                    "lt": 6,
+                    "rt": 7
+                },
+                "axis_inversion": {
+                    "left_x": False,
+                    "left_y": True,
+                    "right_x": False,
+                    "right_y": True
+                }
+            }
+        }
+    
+    # If controller_name is None or not found in config, use default
+    if controller_name is None or controller_name not in config:
+        if controller_name is not None and controller_name not in config:
+            logging.warning(f"Controller '{controller_name}' not found in config. Using default configuration.")
+        return config.get("default", {})
+    
+    return config[controller_name]
+
 
 class InputController:
     """Base class for input controllers that generate motion deltas."""
@@ -208,11 +290,13 @@ class KeyboardController(InputController):
 class GamepadController(InputController):
     """Generate motion deltas from gamepad input."""
 
-    def __init__(self, x_step_size=0.01, y_step_size=0.01, z_step_size=0.01, deadzone=0.1):
+    def __init__(self, x_step_size=0.01, y_step_size=0.01, z_step_size=0.01, deadzone=0.1, config_path=None):
         super().__init__(x_step_size, y_step_size, z_step_size)
         self.deadzone = deadzone
         self.joystick = None
         self.intervention_flag = False
+        self.config_path = config_path
+        self.controller_config = None
 
     def start(self):
         """Initialize pygame and the gamepad."""
@@ -228,18 +312,28 @@ class GamepadController(InputController):
 
         self.joystick = pygame.joystick.Joystick(0)
         self.joystick.init()
-        print(f"Initialized gamepad: {self.joystick.get_name()}")
+        joystick_name = self.joystick.get_name()
+        print(f"Initialized gamepad: {joystick_name}")
 
+        # Load controller configuration based on joystick name
+        self.controller_config = load_controller_config(joystick_name, self.config_path)
+        
+        # Log the configuration being used
+        print(f"Using controller configuration for: {joystick_name if joystick_name in self.controller_config else 'default'}")
+
+        # Get button mappings from config
+        buttons = self.controller_config.get("buttons", {})
+        
         print("Gamepad controls:")
-        print("  RB button: Intervention")
+        print(f"  {buttons.get('rb', 'RB')} button: Intervention")
         print("  Left analog stick: Move in X-Y plane")
         print("  Right analog stick (vertical): Move in Z axis")
-        print("  Back button: Close gripper")
-        print("  Start button: Open gripper")
-        print("  B/Circle button: Exit")
-        print("  Y/Triangle button: End episode with SUCCESS")
-        print("  A/Cross button: End episode with FAILURE")
-        print("  X/Square button: Rerecord episode")
+        print(f"  {buttons.get('lt', 'LT')} button: Close gripper")
+        print(f"  {buttons.get('rt', 'RT')} button: Open gripper")
+        print(f"  {buttons.get('b', 'B')}/Circle button: Exit")
+        print(f"  {buttons.get('y', 'Y')}/Triangle button: End episode with SUCCESS")
+        print(f"  {buttons.get('a', 'A')}/Cross button: End episode with FAILURE")
+        print(f"  {buttons.get('x', 'X')}/Square button: Rerecord episode")
 
     def stop(self):
         """Clean up pygame resources."""
@@ -255,38 +349,43 @@ class GamepadController(InputController):
         """Process pygame events to get fresh gamepad readings."""
         import pygame
 
+        # If controller config is not loaded, use default values
+        if not self.controller_config:
+            self.controller_config = load_controller_config()
+
+        # Get button mappings from config
+        buttons = self.controller_config.get("buttons", {})
+        y_button = buttons.get("y", 3)  # Default to 3 if not found
+        a_button = buttons.get("a", 0)  # Default to 0 if not found (Logitech F310)
+        x_button = buttons.get("x", 2)  # Default to 2 if not found (Logitech F310)
+        lt_button = buttons.get("lt", 6)  # Default to 6 if not found
+        rt_button = buttons.get("rt", 7)  # Default to 7 if not found
+        rb_button = buttons.get("rb", 5)  # Default to 5 if not found
+
         for event in pygame.event.get():
             if event.type == pygame.JOYBUTTONDOWN:
-                if event.button == 3:
+                if event.button == y_button:
                     self.episode_end_status = "success"
-                # A button (1) for failure
-                elif event.button == 1:
+                elif event.button == a_button:
                     self.episode_end_status = "failure"
-                # X button (0) for rerecord
-                elif event.button == 0:
+                elif event.button == x_button:
                     self.episode_end_status = "rerecord_episode"
-
-                # Back button (6) for closing gripper
-                elif event.button == 6:
+                elif event.button == lt_button:
                     self.close_gripper_command = True
-
-                # Start button (7) for opening gripper
-                elif event.button == 7:
+                elif event.button == rt_button:
                     self.open_gripper_command = True
 
             # Reset episode status on button release
             elif event.type == pygame.JOYBUTTONUP:
-                if event.button in [0, 2, 3]:
+                if event.button in [x_button, a_button, y_button]:
                     self.episode_end_status = None
-
-                elif event.button == 6:
+                elif event.button == lt_button:
                     self.close_gripper_command = False
-
-                elif event.button == 7:
+                elif event.button == rt_button:
                     self.open_gripper_command = False
 
-            # Check for RB button (typically button 5) for intervention flag
-            if self.joystick.get_button(5):
+            # Check for RB button for intervention flag
+            if self.joystick.get_button(rb_button):
                 self.intervention_flag = True
             else:
                 self.intervention_flag = False
@@ -296,23 +395,46 @@ class GamepadController(InputController):
         import pygame
 
         try:
-            # Read joystick axes
-            # Left stick X and Y (typically axes 0 and 1)
-            x_input = self.joystick.get_axis(0)  # Left/Right
-            y_input = self.joystick.get_axis(1)  # Up/Down (often inverted)
+            # If controller config is not loaded, use default values
+            if not self.controller_config:
+                self.controller_config = load_controller_config()
 
-            # Right stick Y (typically axis 3 or 4)
-            z_input = self.joystick.get_axis(3)  # Up/Down for Z
+            # Get axis mappings from config
+            axes = self.controller_config.get("axes", {})
+            axis_inversion = self.controller_config.get("axis_inversion", {})
+            
+            # Get axis indices from config (with defaults if not found)
+            left_x_axis = axes.get("left_x", 0)
+            left_y_axis = axes.get("left_y", 1)
+            right_y_axis = axes.get("right_y", 3)
+            
+            # Get axis inversion settings (with defaults if not found)
+            invert_left_x = axis_inversion.get("left_x", False)
+            invert_left_y = axis_inversion.get("left_y", True)
+            invert_right_y = axis_inversion.get("right_y", True)
+            
+            # Read joystick axes
+            x_input = self.joystick.get_axis(left_x_axis)  # Left/Right
+            y_input = self.joystick.get_axis(left_y_axis)  # Up/Down
+            z_input = self.joystick.get_axis(right_y_axis)  # Up/Down for Z
 
             # Apply deadzone to avoid drift
             x_input = 0 if abs(x_input) < self.deadzone else x_input
             y_input = 0 if abs(y_input) < self.deadzone else y_input
             z_input = 0 if abs(z_input) < self.deadzone else z_input
 
-            # Calculate deltas (note: may need to invert axes depending on controller)
-            delta_x = -y_input * self.y_step_size  # Forward/backward
-            delta_y = -x_input * self.x_step_size  # Left/right
-            delta_z = -z_input * self.z_step_size  # Up/down
+            # Apply inversion if configured
+            if invert_left_x:
+                x_input = -x_input
+            if invert_left_y:
+                y_input = -y_input
+            if invert_right_y:
+                z_input = -z_input
+
+            # Calculate deltas
+            delta_x = y_input * self.y_step_size  # Forward/backward
+            delta_y = x_input * self.x_step_size  # Left/right
+            delta_z = z_input * self.z_step_size  # Up/down
 
             return delta_x, delta_y, delta_z
 
@@ -332,16 +454,19 @@ class GamepadControllerHID(InputController):
         deadzone=0.1,
         vendor_id=0x046D,
         product_id=0xC219,
+        config_path=None,
     ):
         """
         Initialize the HID gamepad controller.
 
         Args:
-            step_size: Base movement step size in meters
-            z_scale: Scaling factor for Z-axis movement
+            x_step_size: Base movement step size in meters
+            y_step_size: Base movement step size in meters
+            z_step_size: Base movement step size in meters
             deadzone: Joystick deadzone to prevent drift
             vendor_id: USB vendor ID of the gamepad (default: Logitech)
             product_id: USB product ID of the gamepad (default: RumblePad 2)
+            config_path: Path to the controller configuration JSON file
         """
         super().__init__(x_step_size, y_step_size, z_step_size)
         self.deadzone = deadzone
@@ -349,6 +474,8 @@ class GamepadControllerHID(InputController):
         self.product_id = product_id
         self.device = None
         self.device_info = None
+        self.config_path = config_path
+        self.controller_config = None
 
         # Movement values (normalized from -1.0 to 1.0)
         self.left_x = 0.0
@@ -394,12 +521,25 @@ class GamepadControllerHID(InputController):
             product = self.device.get_product_string()
             print(f"Connected to {manufacturer} {product}")
 
+            # Load controller configuration based on product name
+            controller_name = product if product else "default"
+            self.controller_config = load_controller_config(controller_name, self.config_path)
+            
+            # Log the configuration being used
+            print(f"Using controller configuration for: {controller_name if controller_name in self.controller_config else 'default'}")
+
+            # Get button mappings from config
+            buttons = self.controller_config.get("buttons", {})
+            
             print("Gamepad controls (HID mode):")
             print("  Left analog stick: Move in X-Y plane")
             print("  Right analog stick: Move in Z axis (vertical)")
-            print("  Button 1/B/Circle: Exit")
-            print("  Button 2/A/Cross: End episode with SUCCESS")
-            print("  Button 3/X/Square: End episode with FAILURE")
+            print(f"  {buttons.get('b', 'B')}/Circle button: Exit")
+            print(f"  {buttons.get('y', 'Y')}/Triangle button: End episode with SUCCESS")
+            print(f"  {buttons.get('x', 'X')}/Square button: End episode with FAILURE")
+            print(f"  {buttons.get('rb', 'RB')} button: Intervention")
+            print(f"  RT trigger: Open gripper")
+            print(f"  LT trigger: Close gripper")
 
         except OSError as e:
             print(f"Error opening gamepad: {e}")
@@ -426,16 +566,31 @@ class GamepadControllerHID(InputController):
             return
 
         try:
+            # If controller config is not loaded, use default values
+            if not self.controller_config:
+                self.controller_config = load_controller_config()
+
             # Read data from the gamepad
             data = self.device.read(64)
+            
             # Interpret gamepad data - this will vary by controller model
-            # These offsets are for the Logitech RumblePad 2
             if data and len(data) >= 8:
+                # Get axis mappings from config
+                axes = self.controller_config.get("axes", {})
+                
+                # Default data indices for Logitech RumblePad 2
+                left_x_idx = 1
+                left_y_idx = 2
+                right_x_idx = 3
+                right_y_idx = 4
+                buttons_idx = 5
+                triggers_idx = 6
+                
                 # Normalize joystick values from 0-255 to -1.0-1.0
-                self.left_x = (data[1] - 128) / 128.0
-                self.left_y = (data[2] - 128) / 128.0
-                self.right_x = (data[3] - 128) / 128.0
-                self.right_y = (data[4] - 128) / 128.0
+                self.left_x = (data[left_x_idx] - 128) / 128.0
+                self.left_y = (data[left_y_idx] - 128) / 128.0
+                self.right_x = (data[right_x_idx] - 128) / 128.0
+                self.right_y = (data[right_y_idx] - 128) / 128.0
 
                 # Apply deadzone
                 self.left_x = 0 if abs(self.left_x) < self.deadzone else self.left_x
@@ -443,26 +598,44 @@ class GamepadControllerHID(InputController):
                 self.right_x = 0 if abs(self.right_x) < self.deadzone else self.right_x
                 self.right_y = 0 if abs(self.right_y) < self.deadzone else self.right_y
 
-                # Parse button states (byte 5 in the Logitech RumblePad 2)
-                buttons = data[5]
+                # Apply axis inversion from config
+                axis_inversion = self.controller_config.get("axis_inversion", {})
+                if axis_inversion.get("left_x", False):
+                    self.left_x = -self.left_x
+                if axis_inversion.get("left_y", True):
+                    self.left_y = -self.left_y
+                if axis_inversion.get("right_x", False):
+                    self.right_x = -self.right_x
+                if axis_inversion.get("right_y", True):
+                    self.right_y = -self.right_y
 
-                # Check if RB is pressed then the intervention flag should be set
-                self.intervention_flag = data[6] in [2, 6, 10, 14]
+                # Parse button states
+                buttons_data = data[buttons_idx]
+                
+                # Get button mappings from config
+                button_config = self.controller_config.get("buttons", {})
+                
+                # For HID controllers, we're using bit positions for buttons
+                # These are specific to the Logitech RumblePad 2 by default
+                y_bit = 7  # Triangle/Y button
+                x_bit = 5  # Square/X button
+                a_bit = 4  # Cross/A button
+                
+                # Check for intervention flag (RB button)
+                # This is controller-specific and may need adjustment
+                self.intervention_flag = data[triggers_idx] in [2, 6, 10, 14]
 
-                # Check if RT is pressed
-                self.open_gripper_command = data[6] in [8, 10, 12]
+                # Check for gripper commands (RT and LT triggers)
+                # This is controller-specific and may need adjustment
+                self.open_gripper_command = data[triggers_idx] in [8, 10, 12]
+                self.close_gripper_command = data[triggers_idx] in [4, 6, 12]
 
-                # Check if LT is pressed
-                self.close_gripper_command = data[6] in [4, 6, 12]
-
-                # Check if Y/Triangle button (bit 7) is pressed for saving
-                # Check if X/Square button (bit 5) is pressed for failure
-                # Check if A/Cross button (bit 4) is pressed for rerecording
-                if buttons & 1 << 7:
+                # Check episode status buttons
+                if buttons_data & (1 << y_bit):
                     self.episode_end_status = "success"
-                elif buttons & 1 << 5:
+                elif buttons_data & (1 << x_bit):
                     self.episode_end_status = "failure"
-                elif buttons & 1 << 4:
+                elif buttons_data & (1 << a_bit):
                     self.episode_end_status = "rerecord_episode"
                 else:
                     self.episode_end_status = None
@@ -472,10 +645,11 @@ class GamepadControllerHID(InputController):
 
     def get_deltas(self):
         """Get the current movement deltas from gamepad state."""
-        # Calculate deltas - invert as needed based on controller orientation
-        delta_x = -self.left_y * self.x_step_size  # Forward/backward
-        delta_y = -self.left_x * self.y_step_size  # Left/right
-        delta_z = -self.right_y * self.z_step_size  # Up/down
+        # Calculate deltas based on the axis values and inversion settings
+        # The inversion is already applied in the _update method
+        delta_x = self.left_y * self.x_step_size  # Forward/backward
+        delta_y = self.left_x * self.y_step_size  # Left/right
+        delta_z = self.right_y * self.z_step_size  # Up/down
 
         return delta_x, delta_y, delta_z
 
