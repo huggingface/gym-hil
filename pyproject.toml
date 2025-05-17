@@ -88,3 +88,6 @@ ignore-init-module-imports = true
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.include]
+files = ["gym_hil/controller_config.json", "gym_hil/CONTROLLER_CONFIG.md"]

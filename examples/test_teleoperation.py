@@ -30,6 +30,9 @@ def main():
         "--render-mode", type=str, default="human", choices=["human", "rgb_array"], help="Rendering mode"
     )
     parser.add_argument("--use-keyboard", action="store_true", help="Use keyboard control")
+    parser.add_argument(
+        "--controller-config", type=str, default=None, help="Path to controller configuration JSON file"
+    )
     args = parser.parse_args()
 
     # Create Franka environment - Use base environment first to debug
@@ -57,6 +60,7 @@ def main():
         step_size=args.step_size,
         use_gamepad=not args.use_keyboard,
         max_episode_steps=1000,  # 100 seconds * 10Hz
+        controller_config_path=args.controller_config,
     )
 
     # Print observation space for the wrapped environment
