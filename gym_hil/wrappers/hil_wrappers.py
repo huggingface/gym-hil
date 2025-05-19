@@ -120,19 +120,21 @@ class InputsControlWrapper(gym.Wrapper):
         auto_reset=False,
         input_threshold=0.001,
         use_gamepad=True,
+        controller_config_path=None,
     ):
         """
         Initialize the inputs controller wrapper.
 
-        cfg.
+        Args:
             env: The environment to wrap
             x_step_size: Base movement step size for X axis in meters
             y_step_size: Base movement step size for Y axis in meters
             z_step_size: Base movement step size for Z axis in meters
-            vendor_id: USB vendor ID of the gamepad (default: Logitech)
-            product_id: USB product ID of the gamepad (default: RumblePad 2)
+            use_gripper: Whether to use gripper control
             auto_reset: Whether to auto reset the environment when episode ends
             input_threshold: Minimum movement delta to consider as active input
+            use_gamepad: Whether to use gamepad or keyboard control
+            controller_config_path: Path to the controller configuration JSON file
         """
         super().__init__(env)
         from gym_hil.wrappers.intervention_utils import (
@@ -148,12 +150,14 @@ class InputsControlWrapper(gym.Wrapper):
                     x_step_size=x_step_size,
                     y_step_size=y_step_size,
                     z_step_size=z_step_size,
+                    config_path=controller_config_path,
                 )
             else:
                 self.controller = GamepadController(
                     x_step_size=x_step_size,
                     y_step_size=y_step_size,
                     z_step_size=z_step_size,
+                    config_path=controller_config_path,
                 )
         else:
             self.controller = KeyboardController(

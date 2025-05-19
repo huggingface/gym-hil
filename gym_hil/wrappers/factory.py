@@ -21,6 +21,7 @@ def wrap_env(
     step_size: float = 0.01,
     show_ui: bool = True,
     gripper_penalty: float = -0.02,
+    controller_config_path: str = None,
 ) -> gym.Env:
     """Apply wrappers to an environment based on configuration.
 
@@ -33,6 +34,7 @@ def wrap_env(
         step_size: Step size for movement in meters
         show_ui: Whether to show UI panels in the viewer
         gripper_penalty: Penalty for using the gripper
+        controller_config_path: Path to the controller configuration JSON file
 
     Returns:
         The wrapped environment
@@ -56,6 +58,7 @@ def wrap_env(
         use_gripper=use_gripper,
         auto_reset=auto_reset,
         use_gamepad=use_gamepad,
+        controller_config_path=controller_config_path,
     )
 
     return env
@@ -70,6 +73,7 @@ def make_env(
     step_size: float = 0.01,
     show_ui: bool = True,
     gripper_penalty: float = -0.02,
+    controller_config_path: str = None,
     **kwargs,
 ) -> gym.Env:
     """Create and wrap an environment in a single function.
@@ -83,6 +87,7 @@ def make_env(
         step_size: Step size for movement in meters
         show_ui: Whether to show UI panels in the viewer
         gripper_penalty: Penalty for using the gripper
+        controller_config_path: Path to the controller configuration JSON file
         **kwargs: Additional arguments to pass to the base environment
 
     Returns:
@@ -103,4 +108,5 @@ def make_env(
         step_size=step_size,
         show_ui=show_ui,
         gripper_penalty=gripper_penalty,
+        controller_config_path=controller_config_path,
     )
