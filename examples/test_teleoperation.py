@@ -73,6 +73,7 @@ def main():
     # Reset environment
     obs, _ = env.reset()
     dummy_action = np.zeros(4, dtype=np.float32)
+    dummy_action[-1] = 1
 
     try:
         while True:
