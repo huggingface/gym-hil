@@ -16,6 +16,7 @@
 
 import logging
 import sys
+import time
 
 import gymnasium as gym
 import numpy as np
@@ -46,7 +47,7 @@ class GripperPenaltyWrapper(gym.Wrapper):
 
         info["discrete_penalty"] = 0.0
         if (action[-1] < -0.5 and self.last_gripper_pos > 0.9) or (
-            action[-1] > 0.5 and self.last_gripper_pos < 0.1
+            action[-1] > 0.5 and self.last_gripper_pos < 0.9
         ):
             info["discrete_penalty"] = self.penalty
 
@@ -70,8 +71,8 @@ class EEActionWrapper(gym.ActionWrapper):
         num_actions = 3
 
         if self.use_gripper:
-            action_space_bounds_min = np.concatenate([-self._ee_step_size, [0.0]])
-            action_space_bounds_max = np.concatenate([self._ee_step_size, [2.0]])
+            action_space_bounds_min = np.concatenate([-self._ee_step_size, [-1.0]])
+            action_space_bounds_max = np.concatenate([self._ee_step_size, [1.0]])
             num_actions += 1
 
         ee_action_space = gym.spaces.Box(
@@ -93,13 +94,65 @@ class EEActionWrapper(gym.ActionWrapper):
         # TODO: Extend to enable orientation control
         actions_orn = np.zeros(3)
 
-        gripper_open_command = [0.0]
+        gripper_open_command = [-1.0]
         if self.use_gripper:
             # NOTE: Normalize gripper action from [0, 2] -> [-1, 1]
-            gripper_open_command = [action[-1] - 1.0]
+            gripper_open_command = [action[-1]]
 
         action = np.concatenate([action_xyz, actions_orn, gripper_open_command])
         return action
+
+
+class AddJointVelocityToObservation(gym.ObservationWrapper):
+    def __init__(self, env, joint_velocity_limits=100.0, fps=30):
+        super().__init__(env)
+
+        # Extend observation space to include joint velocities
+        old_low = self.observation_space["agent_pos"].low
+        old_high = self.observation_space["agent_pos"].high
+        old_shape = self.observation_space["agent_pos"].shape
+
+        self.last_joint_positions = np.zeros(old_shape)
+
+        new_low = np.concatenate([old_low, np.ones_like(old_low) * -joint_velocity_limits])
+        new_high = np.concatenate([old_high, np.ones_like(old_high) * joint_velocity_limits])
+
+        new_shape = (old_shape[0] * 2,)
+
+        self.observation_space["agent_pos"] = gym.spaces.Box(
+            low=new_low,
+            high=new_high,
+            shape=new_shape,
+            dtype=np.float32,
+        )
+
+        self.dt = 1.0 / fps
+
+    def observation(self, observation):
+        joint_velocities = (observation["agent_pos"] - self.last_joint_positions) / self.dt
+        self.last_joint_positions = observation["agent_pos"].copy()
+        observation["agent_pos"] = np.concatenate([observation["agent_pos"], joint_velocities], axis=-1)
+        return observation
+
+
+class EEObservationWrapper(gym.ObservationWrapper):
+    def __init__(self, env, ee_pose_limits):
+        super().__init__(env)
+
+        # Extend observation space to include end effector pose
+        prev_space = self.observation_space["agent_pos"]
+
+        self.observation_space["agent_pos"] = gym.spaces.Box(
+            low=np.concatenate([prev_space.low, ee_pose_limits["min"]]),
+            high=np.concatenate([prev_space.high, ee_pose_limits["max"]]),
+            shape=(prev_space.shape[0] + 3,),
+            dtype=np.float32,
+        )
+
+    def observation(self, observation):
+        current_ee_pos = self.env.unwrapped.data.sensor("2f85/pinch_pos").data
+        observation["agent_pos"] = np.concatenate([observation["agent_pos"], current_ee_pos], axis=-1)
+        return observation
 
 
 class InputsControlWrapper(gym.Wrapper):
@@ -192,11 +245,11 @@ class InputsControlWrapper(gym.Wrapper):
         if self.use_gripper:
             gripper_command = self.controller.gripper_command()
             if gripper_command == "open":
-                gamepad_action = np.concatenate([gamepad_action, [2.0]])
-            elif gripper_command == "close":
-                gamepad_action = np.concatenate([gamepad_action, [0.0]])
-            else:
                 gamepad_action = np.concatenate([gamepad_action, [1.0]])
+            elif gripper_command == "close":
+                gamepad_action = np.concatenate([gamepad_action, [-1.0]])
+            else:
+                gamepad_action = np.concatenate([gamepad_action, [0.0]])
 
         # Check episode ending buttons
         # We'll rely on controller.get_episode_end_status() which returns "success", "failure", or None
@@ -280,3 +333,31 @@ class InputsControlWrapper(gym.Wrapper):
 
         # Call the parent close method
         return self.env.close()
+
+
+class ResetDelayWrapper(gym.Wrapper):
+    """
+    Wrapper that adds a time delay when resetting the environment.
+
+    This can be useful for adding a pause between episodes to allow for human observation.
+    """
+
+    def __init__(self, env, delay_seconds=1.0):
+        """
+        Initialize the time delay reset wrapper.
+
+        Args:
+            env: The environment to wrap
+            delay_seconds: The number of seconds to delay during reset
+        """
+        super().__init__(env)
+        self.delay_seconds = delay_seconds
+
+    def reset(self, **kwargs):
+        """Reset the environment with a time delay."""
+        # Add the time delay
+        logging.info(f"Reset delay of {self.delay_seconds} seconds")
+        time.sleep(self.delay_seconds)
+
+        # Call the parent reset method
+        return self.env.reset(**kwargs)

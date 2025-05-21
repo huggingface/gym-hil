@@ -234,7 +234,7 @@ class FrankaGymEnv(MujocoGymEnv):
         # Set the mocap position
         pos = self._data.mocap_pos[0].copy()
         dpos = np.asarray([x, y, z])
-        npos = np.clip(pos + dpos, *self._cartesian_bounds)
+        npos = np.clip(pos + dpos * 0.05, *self._cartesian_bounds)
         self._data.mocap_pos[0] = npos
 
         # Set gripper grasp
@@ -259,15 +259,16 @@ class FrankaGymEnv(MujocoGymEnv):
 
     def get_robot_state(self):
         """Get the current state of the robot."""
-        tcp_pos = self._data.sensor("2f85/pinch_pos").data
+        # tcp_pos = self._data.sensor("2f85/pinch_pos").data
         # tcp_quat = self._data.sensor("2f85/pinch_quat").data
         # tcp_vel = self._data.sensor("2f85/pinch_vel").data
         # tcp_angvel = self._data.sensor("2f85/pinch_angvel").data
         qpos = self.data.qpos[self._panda_dof_ids].astype(np.float32)
-        qvel = self.data.qvel[self._panda_dof_ids].astype(np.float32)
+        # qvel = self.data.qvel[self._panda_dof_ids].astype(np.float32)
         gripper_pose = self.get_gripper_pose()
 
-        return np.concatenate([qpos, qvel, gripper_pose, tcp_pos])
+        # return np.concatenate([qpos, qvel, gripper_pose, tcp_pos])
+        return np.concatenate([qpos, gripper_pose])
 
     def render(self):
         """Render the environment and return frames from multiple cameras."""

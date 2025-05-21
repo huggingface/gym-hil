@@ -4,10 +4,13 @@ import gymnasium as gym
 
 from gym_hil.envs.panda_pick_gym_env import PandaPickCubeGymEnv
 from gym_hil.wrappers.hil_wrappers import (
+    AddJointVelocityToObservation,
     EEActionSpaceParams,
     EEActionWrapper,
+    EEObservationWrapper,
     GripperPenaltyWrapper,
     InputsControlWrapper,
+    ResetDelayWrapper,
 )
 from gym_hil.wrappers.viewer_wrapper import PassiveViewerWrapper
 
@@ -19,9 +22,11 @@ def wrap_env(
     use_gripper: bool = True,
     auto_reset: bool = False,
     step_size: float = 0.01,
+    ee_space_bounds: dict = None,
     show_ui: bool = True,
     gripper_penalty: float = -0.02,
     controller_config_path: str = None,
+    reset_delay_seconds: float = 1.0,
 ) -> gym.Env:
     """Apply wrappers to an environment based on configuration.
 
@@ -35,6 +40,7 @@ def wrap_env(
         show_ui: Whether to show UI panels in the viewer
         gripper_penalty: Penalty for using the gripper
         controller_config_path: Path to the controller configuration JSON file
+        reset_delay_seconds: Number of seconds to delay during environment reset (0.0 means no delay)
 
     Returns:
         The wrapped environment
@@ -46,6 +52,8 @@ def wrap_env(
     if use_gripper:
         env = GripperPenaltyWrapper(env, penalty=gripper_penalty)
 
+    env = AddJointVelocityToObservation(env, fps=10)
+    env = EEObservationWrapper(env, ee_pose_limits=ee_space_bounds)
     ee_params = EEActionSpaceParams(step_size, step_size, step_size)
     env = EEActionWrapper(env, ee_action_space_params=ee_params, use_gripper=True)
 
@@ -61,6 +69,9 @@ def wrap_env(
         controller_config_path=controller_config_path,
     )
 
+    # Apply time delay wrapper
+    env = ResetDelayWrapper(env, delay_seconds=reset_delay_seconds)
+
     return env
 
 
@@ -71,9 +82,11 @@ def make_env(
     use_gripper: bool = True,
     auto_reset: bool = False,
     step_size: float = 0.01,
+    ee_space_bounds: dict = None,
     show_ui: bool = True,
     gripper_penalty: float = -0.02,
     controller_config_path: str = None,
+    reset_delay_seconds: float = 1.0,
     **kwargs,
 ) -> gym.Env:
     """Create and wrap an environment in a single function.
@@ -88,6 +101,7 @@ def make_env(
         show_ui: Whether to show UI panels in the viewer
         gripper_penalty: Penalty for using the gripper
         controller_config_path: Path to the controller configuration JSON file
+        reset_delay_seconds: Number of seconds to delay during environment reset
         **kwargs: Additional arguments to pass to the base environment
 
     Returns:
@@ -106,7 +120,9 @@ def make_env(
         use_gripper=use_gripper,
         auto_reset=auto_reset,
         step_size=step_size,
+        ee_space_bounds=ee_space_bounds,
         show_ui=show_ui,
         gripper_penalty=gripper_penalty,
         controller_config_path=controller_config_path,
+        reset_delay_seconds=reset_delay_seconds,
     )

@@ -24,7 +24,7 @@ from gym_hil.mujoco_gym_env import FrankaGymEnv, GymRenderingSpec
 
 _PANDA_HOME = np.asarray((0, 0.195, 0, -2.43, 0, 2.62, 0.785))
 _CARTESIAN_BOUNDS = np.asarray([[0.2, -0.3, 0], [0.6, 0.3, 0.5]])
-_SAMPLING_BOUNDS = np.asarray([[0.3, -0.15], [0.5, 0.15]])
+_SAMPLING_BOUNDS = np.asarray([[0.2, -0.25], [0.6, 0.25]])
 
 
 class PandaPickCubeGymEnv(FrankaGymEnv):

@@ -33,6 +33,12 @@ def main():
     parser.add_argument(
         "--controller-config", type=str, default=None, help="Path to controller configuration JSON file"
     )
+    parser.add_argument(
+        "--reset-delay",
+        type=float,
+        default=2.0,
+        help="Delay in seconds when resetting the environment (0.0 means no delay)",
+    )
     args = parser.parse_args()
 
     # Create Franka environment - Use base environment first to debug
@@ -61,6 +67,7 @@ def main():
         use_gamepad=not args.use_keyboard,
         max_episode_steps=1000,  # 100 seconds * 10Hz
         controller_config_path=args.controller_config,
+        reset_delay_seconds=args.reset_delay,
     )
 
     # Print observation space for the wrapped environment
@@ -73,6 +80,7 @@ def main():
     # Reset environment
     obs, _ = env.reset()
     dummy_action = np.zeros(4, dtype=np.float32)
+    dummy_action[-1] = 1
 
     try:
         while True:
