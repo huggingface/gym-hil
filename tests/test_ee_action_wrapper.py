@@ -1,0 +1,84 @@
+#!/usr/bin/env python
+
+import numpy as np
+import gymnasium as gym
+from gymnasium.spaces import Box
+import pytest
+
+from gym_hil.wrappers.hil_wrappers import EEActionWrapper, EEActionSpaceParams
+
+# https://github.com/huggingface/gym-hil/issues/6
+class MockEnv(gym.Env):
+    """Mock environment for testing the EEActionWrapper."""
+    
+    def __init__(self):
+        self.observation_space = Box(low=-np.inf, high=np.inf, shape=(3,), dtype=np.float32)
+        self.action_space = Box(low=-1, high=1, shape=(7,), dtype=np.float32)
+        
+    def reset(self, **kwargs):
+        return np.zeros(3, dtype=np.float32), {}
+        
+    def step(self, action):
+        return np.zeros(3, dtype=np.float32), 0.0, False, False, {}
+
+
+def test_init_with_gripper():
+    """Test initialization with gripper enabled."""
+    env = MockEnv()
+    params = EEActionSpaceParams(x_step_size=0.1, y_step_size=0.1, z_step_size=0.1)
+    
+    wrapped_env = EEActionWrapper(env, ee_action_space_params=params, use_gripper=True)
+    
+    # Check action space has correct shape (3 for position + 1 for gripper)
+    assert wrapped_env.action_space.shape == (4,)
+    
+    # Check bounds are correct using assert_allclose to handle floating point precision
+    expected_low = np.array([-0.1, -0.1, -0.1, 0.0], dtype=np.float32)
+    expected_high = np.array([0.1, 0.1, 0.1, 2.0], dtype=np.float32)
+    np.testing.assert_allclose(wrapped_env.action_space.low, expected_low)
+    np.testing.assert_allclose(wrapped_env.action_space.high, expected_high)
+
+
+def test_init_without_gripper():
+    """Test initialization without gripper."""
+    env = MockEnv()
+    params = EEActionSpaceParams(x_step_size=0.1, y_step_size=0.1, z_step_size=0.1)
+    
+    wrapped_env = EEActionWrapper(env, ee_action_space_params=params, use_gripper=False)
+    
+    # Check action space has correct shape (3 for position only)
+    assert wrapped_env.action_space.shape == (3,)
+    
+    # Check bounds are correct using assert_allclose to handle floating point precision
+    expected_low = np.array([-0.1, -0.1, -0.1], dtype=np.float32)
+    expected_high = np.array([0.1, 0.1, 0.1], dtype=np.float32)
+    np.testing.assert_allclose(wrapped_env.action_space.low, expected_low)
+    np.testing.assert_allclose(wrapped_env.action_space.high, expected_high)
+
+
+def test_action_transformation_with_gripper():
+    """Test that actions are correctly transformed with gripper."""
+    env = MockEnv()
+    params = EEActionSpaceParams(x_step_size=0.1, y_step_size=0.1, z_step_size=0.1)
+    
+    wrapped_env = EEActionWrapper(env, ee_action_space_params=params, use_gripper=True)
+    transformed_action = wrapped_env.action(np.array([0.05, -0.05, 0.0, 2.0], dtype=np.float32))
+    
+    # Check transformed action has correct shape and values
+    assert transformed_action.shape == (7,)
+    expected_action = np.array([0.05, -0.05, 0.0, 0.0, 0.0, 0.0, 1.0], dtype=np.float32)
+    np.testing.assert_allclose(transformed_action, expected_action)
+
+
+def test_action_transformation_without_gripper():
+    """Test that actions are correctly transformed without gripper."""
+    env = MockEnv()
+    params = EEActionSpaceParams(x_step_size=0.1, y_step_size=0.1, z_step_size=0.1)
+    
+    wrapped_env = EEActionWrapper(env, ee_action_space_params=params, use_gripper=False)
+    transformed_action = wrapped_env.action(np.array([0.05, -0.05, 0.0], dtype=np.float32))
+    
+    # Check transformed action has correct shape and values
+    assert transformed_action.shape == (7,)
+    expected_action = np.array([0.05, -0.05, 0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32)
+    np.testing.assert_allclose(transformed_action, expected_action) 
