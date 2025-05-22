@@ -70,6 +70,10 @@ class EEActionWrapper(gym.ActionWrapper):
         )
         num_actions = 3
 
+        # Initialize action space bounds for the non-gripper case
+        action_space_bounds_min = -self._ee_step_size
+        action_space_bounds_max = self._ee_step_size
+
         if self.use_gripper:
             action_space_bounds_min = np.concatenate([-self._ee_step_size, [0.0]])
             action_space_bounds_max = np.concatenate([self._ee_step_size, [2.0]])
