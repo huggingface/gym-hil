@@ -41,9 +41,7 @@ register(
 # Register the viewer wrapper
 register(
     id="gym_hil/PandaPickCubeViewer-v0",
-    entry_point=lambda **kwargs: PassiveViewerWrapper(
-        gym.make("gym_hil/PandaPickCubeBase-v0", **kwargs)
-    ),
+    entry_point=lambda **kwargs: PassiveViewerWrapper(gym.make("gym_hil/PandaPickCubeBase-v0", **kwargs)),
     max_episode_steps=100,
 )
 
