@@ -27,8 +27,8 @@ Human-in-the-Loop (HIL) Reinforcement Learning keeps a human inside the control 
   <em>Click the image to watch a demo of gym-hil in action!</em>
 </div>
 
-We use [HIL-SERL](https://hil-serl.github.io/) from [LeRobot](https://github.com/huggingface/lerobot) to train this policy.  
-The policy was trained for **10 minutes** with human in the loop.  
+We use [HIL-SERL](https://hil-serl.github.io/) from [LeRobot](https://github.com/huggingface/lerobot) to train this policy.
+The policy was trained for **10 minutes** with human in the loop.
 After only 10 minutes of training, the policy successfully performs the task.
 
 ## Installation
