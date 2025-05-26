@@ -73,6 +73,7 @@ def main():
     # Reset environment
     obs, _ = env.reset()
     dummy_action = np.zeros(4, dtype=np.float32)
+    # This ensures the "stay gripper" action is set when the intervention button is not pressed
     dummy_action[-1] = 1
 
     try:
