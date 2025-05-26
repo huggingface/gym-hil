@@ -31,7 +31,10 @@ def main():
     )
     parser.add_argument("--use-keyboard", action="store_true", help="Use keyboard control")
     parser.add_argument(
-        "--reset-delay", type=float, default=2.0, help="Delay in seconds when resetting the environment (0.0 means no delay)"
+        "--reset-delay",
+        type=float,
+        default=2.0,
+        help="Delay in seconds when resetting the environment (0.0 means no delay)",
     )
     args = parser.parse_args()
 

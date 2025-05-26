@@ -60,7 +60,7 @@ def wrap_env(
         auto_reset=auto_reset,
         use_gamepad=use_gamepad,
     )
-    
+
     # Apply time delay wrapper
     env = ResetDelayWrapper(env, delay_seconds=reset_delay_seconds)
 
