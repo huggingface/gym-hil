@@ -127,3 +127,6 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# MuJoCo's default log file
+MUJOCO_LOG.TXT

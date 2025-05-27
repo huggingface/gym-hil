@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import gymnasium as gymnasium
+import gymnasium as gym
 
 from gym_hil.mujoco_gym_env import FrankaGymEnv, GymRenderingSpec, MujocoGymEnv
 from gym_hil.wrappers.factory import make_env, wrap_env
@@ -41,9 +41,7 @@ register(
 # Register the viewer wrapper
 register(
     id="gym_hil/PandaPickCubeViewer-v0",
-    entry_point=lambda **kwargs: PassiveViewerWrapper(
-        gymnasium.make("gym_hil/PandaPickCubeBase-v0", **kwargs)
-    ),
+    entry_point=lambda **kwargs: PassiveViewerWrapper(gym.make("gym_hil/PandaPickCubeBase-v0", **kwargs)),
     max_episode_steps=100,
 )
 

@@ -16,6 +16,7 @@
 
 import logging
 import sys
+import time
 
 import gymnasium as gym
 import numpy as np
@@ -276,3 +277,31 @@ class InputsControlWrapper(gym.Wrapper):
 
         # Call the parent close method
         return self.env.close()
+
+
+class ResetDelayWrapper(gym.Wrapper):
+    """
+    Wrapper that adds a time delay when resetting the environment.
+
+    This can be useful for adding a pause between episodes to allow for human observation.
+    """
+
+    def __init__(self, env, delay_seconds=1.0):
+        """
+        Initialize the time delay reset wrapper.
+
+        Args:
+            env: The environment to wrap
+            delay_seconds: The number of seconds to delay during reset
+        """
+        super().__init__(env)
+        self.delay_seconds = delay_seconds
+
+    def reset(self, **kwargs):
+        """Reset the environment with a time delay."""
+        # Add the time delay
+        logging.info(f"Reset delay of {self.delay_seconds} seconds")
+        time.sleep(self.delay_seconds)
+
+        # Call the parent reset method
+        return self.env.reset(**kwargs)
