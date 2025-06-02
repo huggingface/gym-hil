@@ -18,7 +18,7 @@ issues = "https://github.com/huggingface/gym-hil/issues"
 
 [project]
 name = "gym-hil"
-version = "0.1.3"
+version = "0.1.4"
 description = "A gymnasium environment for Human-in-the-Loop Reinforcement Learning"
 authors = [
   {name = "Khalil Meftah", email = "kmeftah.khalil@gmail.com"},

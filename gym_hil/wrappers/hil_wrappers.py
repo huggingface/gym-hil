@@ -23,6 +23,8 @@ import numpy as np
 
 from gym_hil.mujoco_gym_env import MAX_GRIPPER_COMMAND
 
+DEFAULT_EE_STEP_SIZE = {"x": 0.025, "y": 0.025, "z": 0.025}
+
 
 class EEActionSpaceParams:
     def __init__(self, x_step_size, y_step_size, z_step_size):
@@ -56,27 +58,27 @@ class GripperPenaltyWrapper(gym.Wrapper):
 
 
 class EEActionWrapper(gym.ActionWrapper):
-    def __init__(self, env, ee_action_space_params=None, use_gripper=False):
+    def __init__(self, env, ee_action_step_size, use_gripper=False):
         super().__init__(env)
-        self.ee_action_space_params = ee_action_space_params
+        self.ee_action_step_size = ee_action_step_size
         self.use_gripper = use_gripper
 
         self._ee_step_size = np.array(
             [
-                ee_action_space_params.x_step_size,
-                ee_action_space_params.y_step_size,
-                ee_action_space_params.z_step_size,
+                ee_action_step_size["x"],
+                ee_action_step_size["y"],
+                ee_action_step_size["z"],
             ]
         )
         num_actions = 3
 
         # Initialize action space bounds for the non-gripper case
-        action_space_bounds_min = -self._ee_step_size
-        action_space_bounds_max = self._ee_step_size
+        action_space_bounds_min = -np.ones(num_actions)
+        action_space_bounds_max = np.ones(num_actions)
 
         if self.use_gripper:
-            action_space_bounds_min = np.concatenate([-self._ee_step_size, [0.0]])
-            action_space_bounds_max = np.concatenate([self._ee_step_size, [2.0]])
+            action_space_bounds_min = np.concatenate([action_space_bounds_min, [0.0]])
+            action_space_bounds_max = np.concatenate([action_space_bounds_max, [2.0]])
             num_actions += 1
 
         ee_action_space = gym.spaces.Box(
@@ -94,7 +96,8 @@ class EEActionWrapper(gym.ActionWrapper):
         For the moment we only control the x, y, z, gripper
         """
 
-        action_xyz = action[:3]
+        # action between -1 and 1, scale to step_size
+        action_xyz = action[:3] * self._ee_step_size
         # TODO: Extend to enable orientation control
         actions_orn = np.zeros(3)
 

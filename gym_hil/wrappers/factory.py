@@ -9,17 +9,18 @@ from gym_hil.wrappers.hil_wrappers import (
     GripperPenaltyWrapper,
     InputsControlWrapper,
     ResetDelayWrapper,
+    DEFAULT_EE_STEP_SIZE,
 )
 from gym_hil.wrappers.viewer_wrapper import PassiveViewerWrapper
-
+from typing import Dict
 
 def wrap_env(
     env: gym.Env,
+    ee_step_size: Dict[str, float] | None = None,
     use_viewer: bool = False,
     use_gamepad: bool = False,
     use_gripper: bool = True,
     auto_reset: bool = False,
-    step_size: float = 0.01,
     show_ui: bool = True,
     gripper_penalty: float = -0.02,
     reset_delay_seconds: float = 1.0,
@@ -49,15 +50,16 @@ def wrap_env(
     if use_gripper:
         env = GripperPenaltyWrapper(env, penalty=gripper_penalty)
 
-    ee_params = EEActionSpaceParams(step_size, step_size, step_size)
-    env = EEActionWrapper(env, ee_action_space_params=ee_params, use_gripper=True)
+    if not ee_step_size:
+        ee_step_size = DEFAULT_EE_STEP_SIZE
+    env = EEActionWrapper(env, ee_action_step_size=ee_step_size, use_gripper=True)
 
     # Apply control wrappers last
     env = InputsControlWrapper(
         env,
-        x_step_size=step_size,
-        y_step_size=step_size,
-        z_step_size=step_size,
+        x_step_size=1.0,
+        y_step_size=1.0,
+        z_step_size=1.0,
         use_gripper=use_gripper,
         auto_reset=auto_reset,
         use_gamepad=use_gamepad,
