@@ -26,13 +26,6 @@ from gym_hil.mujoco_gym_env import MAX_GRIPPER_COMMAND
 DEFAULT_EE_STEP_SIZE = {"x": 0.025, "y": 0.025, "z": 0.025}
 
 
-class EEActionSpaceParams:
-    def __init__(self, x_step_size, y_step_size, z_step_size):
-        self.x_step_size = x_step_size
-        self.y_step_size = y_step_size
-        self.z_step_size = z_step_size
-
-
 class GripperPenaltyWrapper(gym.Wrapper):
     def __init__(self, env, penalty=-0.05):
         super().__init__(env)

@@ -1,18 +1,19 @@
 #!/usr/bin/env python
 
+from typing import Dict
+
 import gymnasium as gym
 
 from gym_hil.envs.panda_pick_gym_env import PandaPickCubeGymEnv
 from gym_hil.wrappers.hil_wrappers import (
-    EEActionSpaceParams,
+    DEFAULT_EE_STEP_SIZE,
     EEActionWrapper,
     GripperPenaltyWrapper,
     InputsControlWrapper,
     ResetDelayWrapper,
-    DEFAULT_EE_STEP_SIZE,
 )
 from gym_hil.wrappers.viewer_wrapper import PassiveViewerWrapper
-from typing import Dict
+
 
 def wrap_env(
     env: gym.Env,

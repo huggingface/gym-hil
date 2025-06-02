@@ -18,7 +18,7 @@ import gymnasium as gym
 import numpy as np
 from gymnasium.spaces import Box
 
-from gym_hil.wrappers.hil_wrappers import EEActionSpaceParams, EEActionWrapper, DEFAULT_EE_STEP_SIZE
+from gym_hil.wrappers.hil_wrappers import DEFAULT_EE_STEP_SIZE, EEActionWrapper
 
 
 # https://github.com/huggingface/gym-hil/issues/6
