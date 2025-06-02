@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from typing import Dict
+from typing import TypedDict
 
 import gymnasium as gym
 
@@ -15,9 +15,15 @@ from gym_hil.wrappers.hil_wrappers import (
 from gym_hil.wrappers.viewer_wrapper import PassiveViewerWrapper
 
 
+class EEActionStepSize(TypedDict):
+    x: float
+    y: float
+    z: float
+
+
 def wrap_env(
     env: gym.Env,
-    ee_step_size: Dict[str, float] | None = None,
+    ee_step_size: EEActionStepSize | None = None,
     use_viewer: bool = False,
     use_gamepad: bool = False,
     use_gripper: bool = True,
