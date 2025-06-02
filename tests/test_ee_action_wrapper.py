@@ -77,7 +77,9 @@ def test_action_transformation_with_gripper():
 
     # Check transformed action has correct shape and values
     assert transformed_action.shape == (7,)
-    expected_action = np.array([DEFAULT_EE_STEP_SIZE["x"], -DEFAULT_EE_STEP_SIZE["y"], 0.0, 0.0, 0.0, 0.0, 1.0], dtype=np.float32)
+    expected_action = np.array(
+        [DEFAULT_EE_STEP_SIZE["x"], -DEFAULT_EE_STEP_SIZE["y"], 0.0, 0.0, 0.0, 0.0, 1.0], dtype=np.float32
+    )
     np.testing.assert_allclose(transformed_action, expected_action)
 
 
@@ -90,5 +92,7 @@ def test_action_transformation_without_gripper():
 
     # Check transformed action has correct shape and values
     assert transformed_action.shape == (7,)
-    expected_action = np.array([DEFAULT_EE_STEP_SIZE["x"], -DEFAULT_EE_STEP_SIZE["y"], 0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32)
+    expected_action = np.array(
+        [DEFAULT_EE_STEP_SIZE["x"], -DEFAULT_EE_STEP_SIZE["y"], 0.0, 0.0, 0.0, 0.0, 0.0], dtype=np.float32
+    )
     np.testing.assert_allclose(transformed_action, expected_action)
