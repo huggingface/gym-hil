@@ -63,7 +63,6 @@ def main():
         "gym_hil/PandaPickCubeGamepad-v0",
         render_mode=args.render_mode,
         image_obs=True,
-        step_size=args.step_size,
         use_gamepad=not args.use_keyboard,
         max_episode_steps=1000,  # 100 seconds * 10Hz
     )

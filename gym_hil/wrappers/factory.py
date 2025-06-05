@@ -37,11 +37,11 @@ def wrap_env(
 
     Args:
         env: The base environment to wrap
+        ee_step_size: Step size for movement in meters
         use_viewer: Whether to add a passive viewer
         use_gamepad: Whether to use gamepad instead of keyboard controls
         use_gripper: Whether to enable gripper control
         auto_reset: Whether to automatically reset the environment when episode ends
-        step_size: Step size for movement in meters
         show_ui: Whether to show UI panels in the viewer
         gripper_penalty: Penalty for using the gripper
         reset_delay_seconds: The number of seconds to delay during reset
@@ -81,11 +81,11 @@ def wrap_env(
 
 def make_env(
     env_id: str,
+    ee_step_size: EEActionStepSize | None = None,
     use_viewer: bool = False,
     use_gamepad: bool = False,
     use_gripper: bool = True,
     auto_reset: bool = False,
-    step_size: float = 0.01,
     show_ui: bool = True,
     gripper_penalty: float = -0.02,
     reset_delay_seconds: float = 1.0,
@@ -96,11 +96,11 @@ def make_env(
 
     Args:
         env_id: The ID of the base environment to create
+        ee_step_size: Step size for movement in meters
         use_viewer: Whether to add a passive viewer
         use_gamepad: Whether to use gamepad instead of keyboard controls
         use_gripper: Whether to enable gripper control
         auto_reset: Whether to automatically reset the environment when episode ends
-        step_size: Step size for movement in meters
         show_ui: Whether to show UI panels in the viewer
         gripper_penalty: Penalty for using the gripper
         reset_delay_seconds: The number of seconds to delay during reset
@@ -118,11 +118,11 @@ def make_env(
 
     return wrap_env(
         env,
+        ee_step_size=ee_step_size,
         use_viewer=use_viewer,
         use_gamepad=use_gamepad,
         use_gripper=use_gripper,
         auto_reset=auto_reset,
-        step_size=step_size,
         show_ui=show_ui,
         gripper_penalty=gripper_penalty,
         reset_delay_seconds=reset_delay_seconds,

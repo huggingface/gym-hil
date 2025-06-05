@@ -35,7 +35,12 @@ def load_controller_config(controller_name: str, config_path: str | None = None)
     with open(config_path) as f:
         config = json.load(f)
 
-    return config[controller_name] if controller_name in config else config["default"]
+    controller_config = config[controller_name] if controller_name in config else config["default"]
+
+    if controller_name not in config:
+        print(f"Controller {controller_name} not found in config. Using default configuration.")
+
+    return controller_config
 
 
 class InputController:
@@ -259,11 +264,6 @@ class GamepadController(InputController):
         # Load controller configuration based on joystick name
         self.controller_config = load_controller_config(joystick_name, self.config_path)
 
-        # Log the configuration being used
-        print(
-            f"Using controller configuration for: {joystick_name if joystick_name in self.controller_config else 'default'}"
-        )
-
         # Get button mappings from config
         buttons = self.controller_config.get("buttons", {})
 
@@ -291,10 +291,6 @@ class GamepadController(InputController):
     def update(self):
         """Process pygame events to get fresh gamepad readings."""
         import pygame
-
-        # If controller config is not loaded, use default values
-        if not self.controller_config:
-            self.controller_config = load_controller_config()
 
         # Get button mappings from config
         buttons = self.controller_config.get("buttons", {})
@@ -338,10 +334,6 @@ class GamepadController(InputController):
         import pygame
 
         try:
-            # If controller config is not loaded, use default values
-            if not self.controller_config:
-                self.controller_config = load_controller_config()
-
             # Get axis mappings from config
             axes = self.controller_config.get("axes", {})
             axis_inversion = self.controller_config.get("axis_inversion", {})
@@ -512,10 +504,6 @@ class GamepadControllerHID(InputController):
             return
 
         try:
-            # If controller config is not loaded, use default values
-            if not self.controller_config:
-                self.controller_config = load_controller_config()
-
             # Read data from the gamepad
             data = self.device.read(64)
 
