@@ -57,7 +57,6 @@ def main():
     if "pixels" in obs:
         print("Pixels keys:", list(obs["pixels"].keys()))
 
-
     # Now try with the wrapped version
     print("\nTrying wrapped environment...")
     env_id = "gym_hil/PandaPickCubeKeyboard-v0" if args.use_keyboard else "gym_hil/PandaPickCubeGamepad-v0"
