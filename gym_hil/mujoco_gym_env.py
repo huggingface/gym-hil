@@ -168,9 +168,10 @@ class FrankaGymEnv(MujocoGymEnv):
         self._setup_observation_space()
         self._setup_action_space()
 
-        # Initialize renderer
-        self._viewer = mujoco.Renderer(self.model, height=render_spec.height, width=render_spec.width)
-        self._viewer.render()
+        # Only initialize the offscreen renderer if we are not in "human" mode. This prevents the context conflict.
+        if self.render_mode == "rgb_array":
+            self._viewer = mujoco.Renderer(self.model, height=render_spec.height, width=render_spec.width)
+            self._viewer.render()
 
     def _setup_observation_space(self):
         """Setup the observation space for the Franka environment."""
@@ -270,12 +271,22 @@ class FrankaGymEnv(MujocoGymEnv):
         return np.concatenate([qpos, qvel, gripper_pose, tcp_pos])
 
     def render(self):
-        """Render the environment and return frames from multiple cameras."""
-        rendered_frames = []
-        for cam_id in self.camera_id:
-            self._viewer.update_scene(self.data, camera=cam_id)
-            rendered_frames.append(self._viewer.render())
-        return rendered_frames
+        """Render the environment based on the specified mode."""
+        # If we are in human mode, we expect a wrapper to handle rendering.
+        # This method is now primarily for rgb_array mode.
+        if self.render_mode == "rgb_array":
+            if self._viewer is None:
+                self._viewer = mujoco.Renderer(self.model, height=self._render_specs.height, width=self._render_specs.width)
+
+            rendered_frames = []
+            for cam_id in self.camera_id:
+                self._viewer.update_scene(self.data, camera=cam_id)
+                rendered_frames.append(self._viewer.render())
+            return rendered_frames
+        
+        # In 'human' mode, the PassiveViewerWrapper's sync() method handles rendering,
+        # so this method can do nothing.
+        return None
 
     def get_gripper_pose(self):
         """Get the current pose of the gripper."""

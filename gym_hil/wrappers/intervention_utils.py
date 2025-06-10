@@ -17,6 +17,10 @@
 import json
 from pathlib import Path
 
+try:
+    from mujoco.glfw import glfw
+except ImportError:
+    glfw = None
 
 def load_controller_config(controller_name: str, config_path: str | None = None) -> dict:
     """
@@ -116,6 +120,80 @@ class InputController:
             return "open"
         elif self.close_gripper_command:
             return "close"
+
+
+class MuJoCoViewerController(InputController):
+    """Generate motion deltas from keyboard input using a provided MuJoCo GLFW window."""
+
+    def __init__(self, window, x_step_size=0.01, y_step_size=0.01, z_step_size=0.01):
+        super().__init__(x_step_size, y_step_size, z_step_size)
+        if glfw is None:
+            raise ImportError("`mujoco` and `glfw` are required for MuJoCoViewerController. Please install them.")
+
+        self.window = window
+        
+        self.key_states = {
+            "forward_x": False, "backward_x": False, "forward_y": False,
+            "backward_y": False, "forward_z": False, "backward_z": False,
+        }
+        self.key_map = {
+            glfw.KEY_UP: "forward_x", glfw.KEY_DOWN: "backward_x",
+            glfw.KEY_LEFT: "forward_y", glfw.KEY_RIGHT: "backward_y",
+            glfw.KEY_RIGHT_SHIFT: "forward_z", glfw.KEY_LEFT_SHIFT: "backward_z",
+        }
+
+    def start(self):
+        """Set the custom keyboard callback on the provided window."""
+        glfw.set_key_callback(self.window, self._key_callback)
+
+    def stop(self):
+        """Restore the original keyboard callback."""
+        if self.window:
+            glfw.set_key_callback(self.window, None)
+
+    def _key_callback(self, window, key, scancode, act, mods):
+        """The custom callback function that updates our controller's state."""
+        # Close window on ESC
+        if key == glfw.KEY_ESCAPE and act == glfw.PRESS:
+            glfw.set_window_should_close(window, 1)
+            # Also mark episode as failure for consistency
+            self.episode_end_status = "failure"
+            return # Exit early
+
+        # Handle movement keys
+        if key in self.key_map:
+            self.key_states[self.key_map[key]] = (act == glfw.PRESS or act == glfw.REPEAT)
+
+        # Handle other keys
+        is_press = (act == glfw.PRESS)
+        if is_press:
+            if key == glfw.KEY_RIGHT_CONTROL: self.open_gripper_command = True
+            elif key == glfw.KEY_LEFT_CONTROL: self.close_gripper_command = True
+            elif key == glfw.KEY_ENTER: self.episode_end_status = "success"
+            elif key == glfw.KEY_SPACE: self.intervention_flag = not self.intervention_flag
+        else:
+            if key == glfw.KEY_RIGHT_CONTROL: self.open_gripper_command = False
+            elif key == glfw.KEY_LEFT_CONTROL: self.close_gripper_command = False
+        
+
+    def get_deltas(self):
+        """Get the current movement deltas from keyboard state."""
+        delta_x, delta_y, delta_z = 0.0, 0.0, 0.0
+        if self.key_states["forward_x"]: delta_x += self.x_step_size
+        if self.key_states["backward_x"]: delta_x -= self.x_step_size
+        if self.key_states["forward_y"]: delta_y += self.y_step_size
+        if self.key_states["backward_y"]: delta_y -= self.y_step_size
+        if self.key_states["forward_z"]: delta_z += self.z_step_size
+        if self.key_states["backward_z"]: delta_z -= self.z_step_size
+        return delta_x, delta_y, delta_z
+
+    def reset(self):
+        """Reset the controller states."""
+        for key in self.key_states: self.key_states[key] = False
+        self.open_gripper_command = False
+        self.close_gripper_command = False
+        self.intervention_flag = False
+        self.episode_end_status = None
 
 
 class KeyboardController(InputController):

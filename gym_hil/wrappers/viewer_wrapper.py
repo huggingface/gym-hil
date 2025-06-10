@@ -51,6 +51,8 @@ class PassiveViewerWrapper(gym.Wrapper):
             # show_right_ui=show_right_ui,
         )
 
+        self.viewer = self._viewer
+
         # Make sure the first frame is rendered.
         self._viewer.sync()
 
