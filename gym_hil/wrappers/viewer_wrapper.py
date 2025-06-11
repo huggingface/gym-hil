@@ -28,6 +28,13 @@ class PassiveViewerWrapper(gym.Wrapper):
     environment is created so the user no longer needs to use
     ``mujoco.viewer.launch_passive`` or any context–manager boiler-plate.
 
+    Args:
+        viewer_type: Whether to use a single or dual viewer. If dual, two 
+        viewers will be opened. You can switch between fixed cameras using 
+        the [, ] keys or access a free camera mode for manual adjustments using the Esc key 
+        show_left_ui: Whether to show the left UI
+        show_right_ui: Whether to show the right UI
+
     The viewer is kept in sync after every ``reset`` and ``step`` call and is
     closed automatically when the environment itself is closed or deleted.
     """
@@ -35,36 +42,50 @@ class PassiveViewerWrapper(gym.Wrapper):
     def __init__(
         self,
         env: gym.Env,
-        *,
+        viewer_type: str = "single",
         show_left_ui: bool = False,
         show_right_ui: bool = False,
+        **kwargs,
     ) -> None:
         super().__init__(env)
-
+        self.viewer_type = viewer_type
         # Launch the interactive viewer.  We expose *model* and *data* from the
         # *unwrapped* environment to make sure we operate on the base MuJoCo
         # objects even if other wrappers have been applied before this one.
-        self._viewer = mujoco.viewer.launch_passive(
-            env.unwrapped.model,
-            env.unwrapped.data,
-            # show_left_ui=show_left_ui,
-            # show_right_ui=show_right_ui,
-        )
-
+        if self.viewer_type == "single":
+            self._viewer = mujoco.viewer.launch_passive(
+                env.unwrapped.model,
+                env.unwrapped.data,
+                # show_left_ui=show_left_ui,
+                # show_right_ui=show_right_ui,
+            )
+        elif self.viewer_type == "dual":
+            self._viewer_1 = mujoco.viewer.launch_passive(
+                env.unwrapped.model,
+                env.unwrapped.data,
+                # show_left_ui=show_left_ui,
+                # show_right_ui=show_right_ui,
+            )
+            self._viewer_2 = mujoco.viewer.launch_passive(
+                env.unwrapped.model,
+                env.unwrapped.data,
+                # show_left_ui=show_left_ui,
+                # show_right_ui=show_right_ui,
+            )
         # Make sure the first frame is rendered.
-        self._viewer.sync()
+        self._sync()
 
     # ---------------------------------------------------------------------
     # Gym API overrides
 
     def reset(self, **kwargs):  # type: ignore[override]
         observation, info = self.env.reset(**kwargs)
-        self._viewer.sync()
+        self._sync()
         return observation, info
 
     def step(self, action):  # type: ignore[override]
         observation, reward, terminated, truncated, info = self.env.step(action)
-        self._viewer.sync()
+        self._sync()
         return observation, reward, terminated, truncated, info
 
     def close(self) -> None:  # type: ignore[override]
@@ -88,20 +109,25 @@ class PassiveViewerWrapper(gym.Wrapper):
         # 1. Tidy up the renderer managed by the wrapped environment (if any).
         base_env = self.env.unwrapped  # type: ignore[attr-defined]
         if hasattr(base_env, "_viewer"):
-            viewer = base_env._viewer
-            if viewer is not None and hasattr(viewer, "close") and callable(viewer.close):
-                try:  # noqa: SIM105
-                    viewer.close()
-                except Exception:
-                    # Ignore errors coming from older MuJoCo versions or
-                    # already-freed contexts.
-                    pass
-            # Prevent the underlying env from trying to close it again.
-            base_env._viewer = None
+            if self.viewer_type == "single":
+                viewer = base_env._viewer
+                if viewer is not None and hasattr(viewer, "close") and callable(viewer.close):
+                    try:  # noqa: SIM105
+                        viewer.close()
+                    except Exception:
+                        # Ignore errors coming from older MuJoCo versions or
+                        # already-freed contexts.
+                        pass
+                                # Prevent the underlying env from trying to close it again.
+                base_env._viewer = None
 
         # 2. Close the passive viewer launched by this wrapper.
         try:  # noqa: SIM105
-            self._viewer.close()
+            if self.viewer_type == "single":
+                self._viewer.close()
+            elif self.viewer_type == "dual":
+                self._viewer_1.close()
+                self._viewer_2.close()
         except Exception:  # pragma: no cover
             # Defensive: avoid propagating viewer shutdown errors.
             pass
@@ -114,6 +140,18 @@ class PassiveViewerWrapper(gym.Wrapper):
         # in case.
         if hasattr(self, "_viewer"):
             try:  # noqa: SIM105
-                self._viewer.close()
+                if self.viewer_type == "single":
+                    self._viewer.close()
+                elif self.viewer_type == "dual":
+                    self._viewer_1.close()
+                    self._viewer_2.close()
             except Exception:
                 pass
+
+    def _sync(self):
+        if self.viewer_type == "single":
+            self._viewer.sync()
+        elif self.viewer_type == "dual":
+            self._viewer_1.sync()
+            self._viewer_2.sync()
+

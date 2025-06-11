@@ -63,6 +63,7 @@ def main():
     env = gym.make(
         env_id,
         render_mode=args.render_mode,
+        viewer_type="dual",
         image_obs=True,
         use_gamepad=not args.use_keyboard,
         max_episode_steps=1000,  # 100 seconds * 10Hz

@@ -25,6 +25,7 @@ def wrap_env(
     env: gym.Env,
     ee_step_size: EEActionStepSize | None = None,
     use_viewer: bool = False,
+    viewer_type: str = "single",
     use_gamepad: bool = False,
     use_gripper: bool = True,
     auto_reset: bool = False,
@@ -39,6 +40,7 @@ def wrap_env(
         env: The base environment to wrap
         ee_step_size: Step size for movement in meters
         use_viewer: Whether to add a passive viewer
+        viewer_type: Whether to use a single or dual viewer
         use_gamepad: Whether to use gamepad instead of keyboard controls
         use_gripper: Whether to enable gripper control
         auto_reset: Whether to automatically reset the environment when episode ends
@@ -52,7 +54,7 @@ def wrap_env(
     """
     # Apply wrappers in the correct order
     if use_viewer:
-        env = PassiveViewerWrapper(env, show_left_ui=show_ui, show_right_ui=show_ui)
+        env = PassiveViewerWrapper(env, viewer_type=viewer_type, show_left_ui=show_ui, show_right_ui=show_ui)
 
     if use_gripper:
         env = GripperPenaltyWrapper(env, penalty=gripper_penalty)
@@ -83,6 +85,7 @@ def make_env(
     env_id: str,
     ee_step_size: EEActionStepSize | None = None,
     use_viewer: bool = False,
+    viewer_type: str = "single",
     use_gamepad: bool = False,
     use_gripper: bool = True,
     auto_reset: bool = False,
@@ -98,6 +101,7 @@ def make_env(
         env_id: The ID of the base environment to create
         ee_step_size: Step size for movement in meters
         use_viewer: Whether to add a passive viewer
+        viewer_type: Whether to use a single or dual viewer
         use_gamepad: Whether to use gamepad instead of keyboard controls
         use_gripper: Whether to enable gripper control
         auto_reset: Whether to automatically reset the environment when episode ends
@@ -120,6 +124,7 @@ def make_env(
         env,
         ee_step_size=ee_step_size,
         use_viewer=use_viewer,
+        viewer_type=viewer_type,
         use_gamepad=use_gamepad,
         use_gripper=use_gripper,
         auto_reset=auto_reset,
