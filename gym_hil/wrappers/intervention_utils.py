@@ -393,34 +393,23 @@ class GamepadControllerHID(InputController):
 
     def __init__(
         self,
-        x_step_size=0.01,
-        y_step_size=0.01,
-        z_step_size=0.01,
+        x_step_size=1.0,
+        y_step_size=1.0,
+        z_step_size=1.0,
         deadzone=0.1,
-        vendor_id=0x046D,
-        product_id=0xC219,
-        config_path=None,
     ):
         """
         Initialize the HID gamepad controller.
 
         Args:
-            x_step_size: Base movement step size in meters
-            y_step_size: Base movement step size in meters
-            z_step_size: Base movement step size in meters
+            step_size: Base movement step size in meters
+            z_scale: Scaling factor for Z-axis movement
             deadzone: Joystick deadzone to prevent drift
-            vendor_id: USB vendor ID of the gamepad (default: Logitech)
-            product_id: USB product ID of the gamepad (default: RumblePad 2)
-            config_path: Path to the controller configuration JSON file
         """
         super().__init__(x_step_size, y_step_size, z_step_size)
         self.deadzone = deadzone
-        self.vendor_id = vendor_id
-        self.product_id = product_id
         self.device = None
         self.device_info = None
-        self.config_path = config_path
-        self.controller_config = None
 
         # Movement values (normalized from -1.0 to 1.0)
         self.left_x = 0.0
@@ -430,6 +419,7 @@ class GamepadControllerHID(InputController):
 
         # Button states
         self.buttons = {}
+        self.quit_requested = False
         self.save_requested = False
 
     def find_device(self):
@@ -438,12 +428,12 @@ class GamepadControllerHID(InputController):
 
         devices = hid.enumerate()
         for device in devices:
-            if device["vendor_id"] == self.vendor_id and device["product_id"] == self.product_id:
-                print(f"Found gamepad: {device.get('product_string', 'Unknown')}")
+            device_name = device["product_string"]
+            if any(controller in device_name for controller in ["Logitech", "Xbox", "PS4", "PS5"]):
                 return device
 
         print(
-            f"No gamepad with vendor ID 0x{self.vendor_id:04X} and product ID 0x{self.product_id:04X} found"
+            "No gamepad found, check the connection and the product string in HID to add your gamepad"
         )
         return None
 
@@ -466,28 +456,12 @@ class GamepadControllerHID(InputController):
             product = self.device.get_product_string()
             print(f"Connected to {manufacturer} {product}")
 
-            # Load controller configuration based on product name
-            controller_name = product if product else "default"
-            self.controller_config = load_controller_config(controller_name, self.config_path)
-
-            # Log the configuration being used
-            print(
-                f"Using controller configuration for: {controller_name if controller_name in self.controller_config else 'default'}"
-            )
-
-            # Get button mappings from config
-            buttons = self.controller_config.get("buttons", {})
-
             print("Gamepad controls (HID mode):")
-            print(f"  {buttons.get('rb', 'RB')} button: Intervention")
             print("  Left analog stick: Move in X-Y plane")
-            print("  Right analog stick (vertical): Move in Z axis")
-            print(f"  {buttons.get('lt', 'LT')} trigger: Close gripper")
-            print(f"  {buttons.get('rt', 'RT')} trigger: Open gripper")
-            print(f"  {buttons.get('b', 'B')}/Circle button: Exit")
-            print(f"  {buttons.get('y', 'Y')}/Triangle button: End episode with SUCCESS")
-            print(f"  {buttons.get('a', 'A')}/Cross button: End episode with FAILURE")
-            print(f"  {buttons.get('x', 'X')}/Square button: Rerecord episode")
+            print("  Right analog stick: Move in Z axis (vertical)")
+            print("  Button 1/B/Circle: Exit")
+            print("  Button 2/A/Cross: End episode with SUCCESS")
+            print("  Button 3/X/Square: End episode with FAILURE")
 
         except OSError as e:
             print(f"Error opening gamepad: {e}")
@@ -516,28 +490,14 @@ class GamepadControllerHID(InputController):
         try:
             # Read data from the gamepad
             data = self.device.read(64)
-
             # Interpret gamepad data - this will vary by controller model
+            # These offsets are for the Logitech RumblePad 2
             if data and len(data) >= 8:
-                # Get axis mappings from config
-                axes = self.controller_config.get("axes", {})
-
-                # Get axis indices from config (with defaults if not found)
-                # For HID controllers, these are data array indices, not axis numbers
-                left_x_idx = axes.get("left_x", 1)  # Default to 1 for Logitech RumblePad 2
-                left_y_idx = axes.get("left_y", 2)  # Default to 2 for Logitech RumblePad 2
-                right_x_idx = axes.get("right_x", 3)  # Default to 3 for Logitech RumblePad 2
-                right_y_idx = axes.get("right_y", 4)  # Default to 4 for Logitech RumblePad 2
-
-                # Default indices for button data and triggers
-                buttons_idx = 5
-                triggers_idx = 6
-
                 # Normalize joystick values from 0-255 to -1.0-1.0
-                self.left_x = (data[left_x_idx] - 128) / 128.0
-                self.left_y = (data[left_y_idx] - 128) / 128.0
-                self.right_x = (data[right_x_idx] - 128) / 128.0
-                self.right_y = (data[right_y_idx] - 128) / 128.0
+                self.left_x = (data[1] - 128) / 128.0
+                self.left_y = (data[2] - 128) / 128.0
+                self.right_x = (data[3] - 128) / 128.0
+                self.right_y = (data[4] - 128) / 128.0
 
                 # Apply deadzone
                 self.left_x = 0 if abs(self.left_x) < self.deadzone else self.left_x
@@ -545,46 +505,26 @@ class GamepadControllerHID(InputController):
                 self.right_x = 0 if abs(self.right_x) < self.deadzone else self.right_x
                 self.right_y = 0 if abs(self.right_y) < self.deadzone else self.right_y
 
-                # Apply axis inversion from config
-                axis_inversion = self.controller_config.get("axis_inversion", {})
-                if axis_inversion.get("left_x", False):
-                    self.left_x = -self.left_x
-                if axis_inversion.get("left_y", True):
-                    self.left_y = -self.left_y
-                if axis_inversion.get("right_x", False):
-                    self.right_x = -self.right_x
-                if axis_inversion.get("right_y", True):
-                    self.right_y = -self.right_y
+                # Parse button states (byte 5 in the Logitech RumblePad 2)
+                buttons = data[5]
 
-                # Parse button states
-                buttons_data = data[buttons_idx]
+                # Check if RB is pressed then the intervention flag should be set
+                self.intervention_flag = data[6] in [2, 6, 10, 14]
 
-                # Get button mappings from config
-                button_config = self.controller_config.get("buttons", {})
+                # Check if RT is pressed
+                self.open_gripper_command = data[6] in [8, 10, 12]
 
-                # Map button names to bit positions (with defaults for Logitech RumblePad 2)
-                y_bit = button_config.get("y", 7)  # Default to bit 7 for Y/Triangle
-                x_bit = button_config.get("x", 5)  # Default to bit 5 for X/Square
-                a_bit = button_config.get("a", 4)  # Default to bit 4 for A/Cross
+                # Check if LT is pressed
+                self.close_gripper_command = data[6] in [4, 6, 12]
 
-                # Check for intervention flag (RB button)
-                # Use the button_config to determine which trigger value indicates RB
-                rb_trigger_values = [2, 6, 10, 14]  # Default values for Logitech RumblePad 2
-                self.intervention_flag = data[triggers_idx] in rb_trigger_values
-
-                # Check for gripper commands (RT and LT triggers)
-                # Use the button_config to determine which trigger values indicate RT and LT
-                rt_trigger_values = [8, 10, 12]  # Default values for Logitech RumblePad 2
-                lt_trigger_values = [4, 6, 12]  # Default values for Logitech RumblePad 2
-                self.open_gripper_command = data[triggers_idx] in rt_trigger_values
-                self.close_gripper_command = data[triggers_idx] in lt_trigger_values
-
-                # Check episode status buttons
-                if buttons_data & (1 << y_bit):
+                # Check if Y/Triangle button (bit 7) is pressed for saving
+                # Check if X/Square button (bit 5) is pressed for failure
+                # Check if A/Cross button (bit 4) is pressed for rerecording
+                if buttons & 1 << 7:
                     self.episode_end_status = "success"
-                elif buttons_data & (1 << a_bit):
+                elif buttons & 1 << 5:
                     self.episode_end_status = "failure"
-                elif buttons_data & (1 << x_bit):
+                elif buttons & 1 << 4:
                     self.episode_end_status = "rerecord_episode"
                 else:
                     self.episode_end_status = None
@@ -594,14 +534,18 @@ class GamepadControllerHID(InputController):
 
     def get_deltas(self):
         """Get the current movement deltas from gamepad state."""
-        # Calculate deltas based on the axis values and inversion settings
-        # The inversion is already applied in the _update method
-        delta_x = self.left_y * self.x_step_size  # Forward/backward
-        delta_y = self.left_x * self.y_step_size  # Left/right
-        delta_z = self.right_y * self.z_step_size  # Up/down
+        # Calculate deltas - invert as needed based on controller orientation
+        delta_x = -self.left_y * self.x_step_size  # Forward/backward
+        delta_y = -self.left_x * self.y_step_size  # Left/right
+        delta_z = -self.right_y * self.z_step_size  # Up/down
 
         return delta_x, delta_y, delta_z
+
+    def should_quit(self):
+        """Return True if quit button was pressed."""
+        return self.quit_requested
 
     def should_save(self):
         """Return True if save button was pressed."""
         return self.save_requested
+

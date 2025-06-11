@@ -151,7 +151,6 @@ class InputsControlWrapper(gym.Wrapper):
                     x_step_size=x_step_size,
                     y_step_size=y_step_size,
                     z_step_size=z_step_size,
-                    config_path=controller_config_path,
                 )
             else:
                 self.controller = GamepadController(
