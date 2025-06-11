@@ -432,9 +432,7 @@ class GamepadControllerHID(InputController):
             if any(controller in device_name for controller in ["Logitech", "Xbox", "PS4", "PS5"]):
                 return device
 
-        print(
-            "No gamepad found, check the connection and the product string in HID to add your gamepad"
-        )
+        print("No gamepad found, check the connection and the product string in HID to add your gamepad")
         return None
 
     def start(self):
@@ -548,4 +546,3 @@ class GamepadControllerHID(InputController):
     def should_save(self):
         """Return True if save button was pressed."""
         return self.save_requested
-
