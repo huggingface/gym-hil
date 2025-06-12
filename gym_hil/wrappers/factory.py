@@ -50,9 +50,6 @@ def wrap_env(
     Returns:
         The wrapped environment
     """
-    # Apply wrappers in the correct order
-    if use_viewer:
-        env = PassiveViewerWrapper(env, show_left_ui=show_ui, show_right_ui=show_ui)
 
     if use_gripper:
         env = GripperPenaltyWrapper(env, penalty=gripper_penalty)
@@ -72,6 +69,10 @@ def wrap_env(
         use_gamepad=use_gamepad,
         controller_config_path=controller_config_path,
     )
+
+    # Apply wrappers in the correct order
+    if use_viewer:
+        env = PassiveViewerWrapper(env, show_left_ui=show_ui, show_right_ui=show_ui)
 
     # Apply time delay wrapper
     env = ResetDelayWrapper(env, delay_seconds=reset_delay_seconds)
