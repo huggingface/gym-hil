@@ -18,7 +18,108 @@ from typing import Optional, Tuple, Union
 
 import mujoco
 import numpy as np
-from dm_robotics.transformations import transformations as tr
+
+
+def mat_to_quat(mat: np.ndarray) -> np.ndarray:
+    """Convert a 3x3 rotation matrix to a quaternion.
+    
+    Args:
+        mat: 3x3 rotation matrix
+        
+    Returns:
+        Quaternion as [w, x, y, z]
+    """
+    trace = np.trace(mat)
+    
+    if trace > 0:
+        s = 2.0 * np.sqrt(trace + 1.0)
+        w = 0.25 * s
+        x = (mat[2, 1] - mat[1, 2]) / s
+        y = (mat[0, 2] - mat[2, 0]) / s
+        z = (mat[1, 0] - mat[0, 1]) / s
+    elif mat[0, 0] > mat[1, 1] and mat[0, 0] > mat[2, 2]:
+        s = 2.0 * np.sqrt(1.0 + mat[0, 0] - mat[1, 1] - mat[2, 2])
+        w = (mat[2, 1] - mat[1, 2]) / s
+        x = 0.25 * s
+        y = (mat[0, 1] + mat[1, 0]) / s
+        z = (mat[0, 2] + mat[2, 0]) / s
+    elif mat[1, 1] > mat[2, 2]:
+        s = 2.0 * np.sqrt(1.0 + mat[1, 1] - mat[0, 0] - mat[2, 2])
+        w = (mat[0, 2] - mat[2, 0]) / s
+        x = (mat[0, 1] + mat[1, 0]) / s
+        y = 0.25 * s
+        z = (mat[1, 2] + mat[2, 1]) / s
+    else:
+        s = 2.0 * np.sqrt(1.0 + mat[2, 2] - mat[0, 0] - mat[1, 1])
+        w = (mat[1, 0] - mat[0, 1]) / s
+        x = (mat[0, 2] + mat[2, 0]) / s
+        y = (mat[1, 2] + mat[2, 1]) / s
+        z = 0.25 * s
+    
+    return np.array([w, x, y, z])
+
+
+def quat_diff_active(source_quat: np.ndarray, target_quat: np.ndarray) -> np.ndarray:
+    """Compute the quaternion difference from source to target.
+    
+    Args:
+        source_quat: Source quaternion [w, x, y, z]
+        target_quat: Target quaternion [w, x, y, z]
+        
+    Returns:
+        Quaternion representing rotation from source to target
+    """
+    # q_diff = q_target * q_source^(-1)
+    # For unit quaternions, inverse is conjugate
+    source_conj = np.array([source_quat[0], -source_quat[1], -source_quat[2], -source_quat[3]])
+    
+    # Quaternion multiplication: q1 * q2
+    w1, x1, y1, z1 = target_quat
+    w2, x2, y2, z2 = source_conj
+    
+    w = w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2
+    x = w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2
+    y = w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2
+    z = w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2
+    
+    return np.array([w, x, y, z])
+
+
+def quat_to_axisangle(quat: np.ndarray) -> np.ndarray:
+    """Convert a quaternion to axis-angle representation.
+    
+    Args:
+        quat: Quaternion [w, x, y, z]
+        
+    Returns:
+        Axis-angle vector (angle * axis)
+    """
+    w, x, y, z = quat
+    
+    # Normalize quaternion
+    norm = np.sqrt(w*w + x*x + y*y + z*z)
+    if norm < 1e-10:
+        return np.zeros(3)
+    
+    w /= norm
+    x /= norm
+    y /= norm
+    z /= norm
+    
+    # Compute angle
+    angle = 2.0 * np.arccos(np.clip(w, -1.0, 1.0))
+    
+    # Compute axis
+    sin_half_angle = np.sqrt(1.0 - w * w)
+    
+    if sin_half_angle < 1e-10:
+        # Small angle, arbitrary axis
+        return np.array([angle * x, angle * y, angle * z])
+    
+    axis = np.array([x, y, z]) / sin_half_angle
+    
+    # Return axis-angle vector
+    return angle * axis
 
 
 def pd_control(
@@ -54,8 +155,8 @@ def pd_control_orientation(
     dw_max: float = 0.0,
 ) -> np.ndarray:
     # Compute error.
-    quat_err = tr.quat_diff_active(source_quat=quat_des, target_quat=quat)
-    ori_err = tr.quat_to_axisangle(quat_err)
+    quat_err = quat_diff_active(source_quat=quat_des, target_quat=quat)
+    ori_err = quat_to_axisangle(quat_err)
     w_err = w
 
     # Apply gains.
@@ -92,10 +193,10 @@ def opspace(
 
     if ori is None:
         xmat = data.site_xmat[site_id].reshape((3, 3))
-        quat_des = tr.mat_to_quat(xmat.reshape((3, 3)))
+        quat_des = mat_to_quat(xmat.reshape((3, 3)))
     else:
         ori = np.asarray(ori)
-        quat_des = tr.mat_to_quat(ori) if ori.shape == (3, 3) else ori
+        quat_des = mat_to_quat(ori) if ori.shape == (3, 3) else ori
 
     q_des = data.qpos[dof_ids] if joint is None else np.asarray(joint)
 
@@ -144,7 +245,7 @@ def opspace(
     )
 
     # Compute orientation PD control.
-    quat = tr.mat_to_quat(data.site_xmat[site_id].reshape((3, 3)))
+    quat = mat_to_quat(data.site_xmat[site_id].reshape((3, 3)))
     if quat @ quat_des < 0.0:
         quat *= -1.0
     w = J_w @ dq

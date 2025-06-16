@@ -18,7 +18,7 @@ issues = "https://github.com/huggingface/gym-hil/issues"
 
 [project]
 name = "gym-hil"
-version = "0.1.8"
+version = "0.1.9"
 description = "A gymnasium environment for Human-in-the-Loop Reinforcement Learning"
 authors = [
   {name = "Khalil Meftah", email = "kmeftah.khalil@gmail.com"},
@@ -42,7 +42,6 @@ dependencies = [
     "pygame>=2.5.1",
     "pynput>=1.7.7",
     "hidapi>=0.14.0",
-    "dm-robotics-transformations>=0.9.0",
     "imageio[ffmpeg]>=2.34.0",
 ]
 
