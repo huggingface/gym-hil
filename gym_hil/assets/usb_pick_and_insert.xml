@@ -1,0 +1,68 @@
+<mujoco model="Arena">
+  <include file="panda.xml"/>
+  <!-- <include file="attachment.xml"/> -->
+  <!-- <include file="panda_with_original_hand.xml"/> -->
+
+  <option timestep=".002" noslip_iterations="5" noslip_tolerance="0"/>
+
+  <statistic center="0.3 0 0.4" extent=".8"/>
+
+  <visual>
+    <headlight diffuse=".4 .4 .4" ambient=".5 .5 .5"/>
+    <global azimuth="160" elevation="-20" offheight="720" offwidth="1280"/>
+    <quality offsamples="8"/>
+  </visual>
+
+  <asset>
+    <texture type="skybox" builtin="gradient" rgb1=".3 .5 .7" rgb2="0 0 0" width="32" height="512"/>
+    <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1=".1 .2 .3" rgb2=".2 .3 .4"/>
+    <!-- <texture name="grid" type="2d" builtin="checker" width="512" height="512" rgb1="0 0 0" rgb2="0 0 0"/> -->
+    <material name="grid" texture="grid" texrepeat="2 2" texuniform="true" reflectance="0"/>
+    <mesh file="usb_insert_assets/usb_0.obj"/>
+    <mesh file="usb_insert_assets/usb_1.obj"/>
+    <mesh file="usb_insert_assets/usb_port_2_0.obj"/>
+    <mesh file="usb_insert_assets/usb_port_2_1.obj"/>
+  </asset>
+
+  <worldbody>
+    <camera name="front" pos="1.3 0.0 0.7" quat="0.5963678 0.3799282 0.3799282 0.5963678" fovy="45"/>
+    <camera name="side" pos="0.238 -0.184 0.089"  xyaxes="0.702 -0.712 0.000 0.123 0.122 0.985" fovy="45"/>
+    <light pos="0 0 3" dir="0 0 -1" diffuse="1 1 1" specular=".3 .3 .3"/>
+    <light pos="0 -.5 .4" mode="targetbodycom" target="usb" diffuse=".8 .8 .8" specular=".3 .3 .3"/>
+    <geom name="floor" size="3 3 0.01" type="plane" material="grid"/>
+    <body name="usb_port" pos="0.6 0.0 0.0">
+      <freejoint name="usb_port_joint"/>
+      <geom mesh="usb_port_2_0" type="mesh" mass="0.5" group="2" contype="0" conaffinity="0" rgba="0.1 0.1 0.1 1.000000"/>
+      <geom mesh="usb_port_2_1" type="mesh" mass="1000" group="2" contype="0" conaffinity="0" rgba="0.3 0.8 0.3 1.000000"/>
+      <geom name="usb_port_collision_1" type="box" condim="3" friction=".8 .8 .8" group="3" pos="-0.05 0.0 0.0259" solimp="0.95 0.99 0.001" solref="0.004 1" priority="1" size=".05 .0999 .026" mass="0.1" rgba=".6 .3 .5 1"/>
+      <geom name="usb_port_collision_2" type="box" condim="3" friction=".8 .8 .8" group="3" pos="-0.05 0.0 0.0719" solimp="0.95 0.99 0.001" solref="0.004 1" priority="1" size=".05 .0999 .0075" mass="0.1" rgba=".6 .3 .3 1"/>
+      <geom name="usb_port_collision_3" type="box" condim="3" friction=".8 .8 .8" group="3" pos="-0.05 -0.051 0.058" solimp="0.95 0.99 0.001" solref="0.004 1" priority="1" size=".05 .035 .006" mass="0.1" rgba=".2 .3 .4 1"/>
+      <geom name="usb_port_collision_4" type="box" condim="3" friction=".8 .8 .8" group="3" pos="-0.05 0.0535 0.058" solimp="0.95 0.99 0.001" solref="0.004 1" priority="1" size=".05 .035 .006" mass="0.1" rgba=".2 .3 .4 1"/>
+    </body>
+    <body name="usb" pos="0.38 -0.02 0.0" >
+      <freejoint name="usb_joint"/>
+      <!-- <inertial mass="1.0"
+        fullinertia="1.0 1.0 1.0 0.000000 0.000000 0.000000"/> -->
+      <geom name="usb_grip_collision" type="box" condim="3" friction=".8 .8 .8" group="3" pos="0.015 0.019 0.0085" solimp="0.95 0.99 0.001" solref="0.004 1" priority="1" size=".015 .019 .016" mass="0.1" rgba=".6 .3 .6 1"/>
+      <geom mesh="usb_0" type="mesh" mass="0.001" contype="0" conaffinity="0" rgba="0.801756 0.148247 0.000000 1.000000"/>
+      <geom mesh="usb_1" type="mesh" mass="0.0001" group="2" rgba="0.150862 0.000000 0.800347 1.000000"/>
+      <site name="usb_center" pos="0 0 0" size="0.005" type="sphere" rgba="1 0 0 0"/>
+    </body>
+    <body name="target" pos=".15 0 .5" quat="0 1 0 0" mocap="true">
+      <geom name="target" type="box" size=".03 .03 .03" contype="0" conaffinity="0" rgba=".6 .3 .3 0"/>
+    </body>
+
+    <!-- <body name="block" pos="0.3 0 .02"> -->
+      <!-- <freejoint name="block"/> -->
+      <!-- <geom name="block" type="box" size=".02 .02 .02" mass="0.1" rgba=".6 .3 .6 1"/> -->
+    <!-- </body> -->
+
+    <geom name="target_region" type="cylinder" pos=".5 .10 0.005" size="0.035 0.01" rgba="0 0 1 0.0"  contype="0" conaffinity="0" />
+    
+  </worldbody>
+
+  <sensor>
+    <framepos name="usb_pos" objtype="body" objname="usb"/>
+    <framequat name="usb_quat" objtype="body" objname="usb"/>
+  </sensor>
+</mujoco>
