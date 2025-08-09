@@ -252,7 +252,7 @@ class InputsControlWrapper(gym.Wrapper):
         info["is_intervention"] = is_intervention
         action_intervention = action
 
-        info["action_intervention"] = action_intervention
+        info["teleop_action"] = action_intervention
         info["rerecord_episode"] = rerecord_episode
 
         # If episode ended, reset the state
