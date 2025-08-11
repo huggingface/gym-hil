@@ -20,6 +20,8 @@ import gymnasium as gym
 import mujoco
 import mujoco.viewer
 
+from mujoco.glfw import glfw
+
 
 class PassiveViewerWrapper(gym.Wrapper):
     """Gym wrapper that opens a passive MuJoCo viewer automatically.
@@ -117,3 +119,164 @@ class PassiveViewerWrapper(gym.Wrapper):
                 self._viewer.close()
             except Exception:
                 pass
+
+
+class SplitViewportWindow:
+    """Owns a GLFW window + shared MjrContext/Scene and draws two cameras side-by-side."""
+    def __init__(self, model, data, title="gym-hil — Dual View", msaa=4):
+        if not glfw.init():
+            raise RuntimeError("Could not initialize GLFW")
+        glfw.window_hint(glfw.SAMPLES, msaa)
+        self.window = glfw.create_window(1280, 720, title, None, None)
+        if not self.window:
+            glfw.terminate()
+            raise RuntimeError("GLFW window creation failed")
+        glfw.make_context_current(self.window)
+        glfw.swap_interval(1)
+
+        self.m = model
+        self.d = data
+
+        self.opt = mujoco.MjvOption(); mujoco.mjv_defaultOption(self.opt)
+        self.scn = mujoco.MjvScene(self.m, maxgeom=2000)
+        self.con = mujoco.MjrContext(self.m, mujoco.mjtFontScale.mjFONTSCALE_100)
+
+        def fixed_cam(name: str):
+            cam = mujoco.MjvCamera(); mujoco.mjv_defaultCamera(cam)
+            cam_id = mujoco.mj_name2id(self.m, mujoco.mjtObj.mjOBJ_CAMERA, name)
+            if cam_id >= 0:
+                cam.type = mujoco.mjtCamera.mjCAMERA_FIXED
+                cam.fixedcamid = cam_id
+            else:
+                cam.type = mujoco.mjtCamera.mjCAMERA_FREE
+            return cam
+
+        self.cam_left = fixed_cam("front")
+        self.cam_right = fixed_cam("handcam_rgb")
+
+    def render_dual(self):
+        w, h = glfw.get_framebuffer_size(self.window)
+        left  = mujoco.MjrRect(0, 0, w//2, h)
+        right = mujoco.MjrRect(w//2, 0, w - w//2, h)
+
+        mujoco.mjr_setBuffer(int(mujoco.mjtFramebuffer.mjFB_WINDOW), self.con)
+        mujoco.mjv_updateScene(self.m, self.d, self.opt, None, self.cam_left,
+                               mujoco.mjtCatBit.mjCAT_ALL, self.scn)
+        mujoco.mjr_render(left, self.scn, self.con)
+        mujoco.mjv_updateCamera(self.m, self.d, self.cam_right, self.scn)
+        mujoco.mjr_render(right, self.scn, self.con)
+
+    def make_current(self):
+        if glfw.get_current_context() is not self.window:
+            glfw.make_context_current(self.window)
+
+    def is_open(self):
+        return not glfw.window_should_close(self.window)
+
+    def swap(self):
+        glfw.swap_buffers(self.window)
+        glfw.poll_events()
+
+    def close(self):
+        try:
+            # No mjr_freeContext in your build; let GC handle it
+            pass
+        finally:
+            if self.window:
+                glfw.destroy_window(self.window)
+                glfw.terminate()
+                self.window = None
+
+
+class OffscreenObsMixin:
+    """Capture RGB images from named cameras via the SAME render context."""
+    def __init__(self, split_window: SplitViewportWindow, size=(128, 128)):
+        self.win = split_window
+        self.h, self.w = size  # (H, W)
+
+        # Prepare capture cameras
+        self._obs_cams = {}
+        for name in ("front", "handcam_rgb"):
+            cam = mujoco.MjvCamera(); mujoco.mjv_defaultCamera(cam)
+            cam_id = mujoco.mj_name2id(self.win.m, mujoco.mjtObj.mjOBJ_CAMERA, name)
+            if cam_id >= 0:
+                cam.type = mujoco.mjtCamera.mjCAMERA_FIXED
+                cam.fixedcamid = cam_id
+            self._obs_cams[name] = cam
+
+        # Ensure offscreen size, then recreate the context (no free call)
+        self.win.m.vis.global_.offwidth  = self.w
+        self.win.m.vis.global_.offheight = self.h
+        # Recreate MjrContext bound to current GL context
+        self.win.make_current()
+        # Optionally help GC: old = self.win.con; del old
+        self.win.con = mujoco.MjrContext(self.win.m, mujoco.mjtFontScale.mjFONTSCALE_100)
+
+    def capture_images(self):
+        self.win.make_current()
+        mujoco.mjr_setBuffer(int(mujoco.mjtFramebuffer.mjFB_OFFSCREEN), self.win.con)
+
+        out = {}
+        rect = mujoco.MjrRect(0, 0, self.win.con.offWidth, self.win.con.offHeight)
+        rgb = np.empty((self.win.con.offHeight, self.win.con.offWidth, 3), dtype=np.uint8)
+        depth = np.empty((self.win.con.offHeight, self.win.con.offWidth), dtype=np.float32)
+
+        for name, cam in self._obs_cams.items():
+            mujoco.mjv_updateScene(self.win.m, self.win.d, self.win.opt, None, cam,
+                                   mujoco.mjtCatBit.mjCAT_ALL, self.win.scn)
+            mujoco.mjr_render(rect, self.win.scn, self.win.con)
+            mujoco.mjr_readPixels(rgb, depth, rect, self.win.con)
+            out[name] = rgb.copy()
+
+        # Caller will switch back to WINDOW before on-screen draw
+        return out
+
+
+class DualViewportWrapper(gym.Wrapper):
+    """
+    Runs a GLFW split-viewport window, and injects image obs ('front','wrist')
+    captured offscreen using the SAME MuJoCo context.
+    """
+    def __init__(self, env: gym.Env, image_size=(128, 128)):
+        super().__init__(env)
+        m, d = env.unwrapped.model, env.unwrapped.data
+        self.win = SplitViewportWindow(m, d)
+        self.cap = OffscreenObsMixin(self.win, size=image_size)
+
+    def reset(self, **kwargs):
+        obs, info = self.env.reset(**kwargs)
+        imgs = self.cap.capture_images()
+        obs = self._inject_images(obs, imgs)
+        return obs, info
+
+    def step(self, action):
+        obs, r, term, trunc, info = self.env.step(action)
+        imgs = self.cap.capture_images()
+        obs = self._inject_images(obs, imgs)
+
+        # Draw dual view
+        self.win.make_current()
+        self.win.render_dual()
+        self.win.swap()
+        return obs, r, term, trunc, info
+
+    def close(self):
+        try:
+            self.win.close()
+        finally:
+            return super().close()
+
+    @staticmethod
+    def _ensure_pixels_dict(obs):
+        if not isinstance(obs, dict):
+            obs = {"state": obs}
+        if "pixels" not in obs:
+            obs["pixels"] = {}
+        return obs
+
+    @staticmethod
+    def _inject_images(obs, imgs):
+        obs = DualViewportWrapper._ensure_pixels_dict(obs)
+        obs["pixels"]["front"] = imgs.get("front")
+        obs["pixels"]["wrist"] = imgs.get("handcam_rgb")
+        return obs

@@ -18,7 +18,7 @@ import gymnasium as gym
 
 from gym_hil.mujoco_gym_env import FrankaGymEnv, GymRenderingSpec, MujocoGymEnv
 from gym_hil.wrappers.factory import make_env, wrap_env
-from gym_hil.wrappers.viewer_wrapper import PassiveViewerWrapper
+from gym_hil.wrappers.viewer_wrapper import PassiveViewerWrapper, DualViewportWrapper
 
 __all__ = [
     "MujocoGymEnv",
@@ -48,6 +48,13 @@ register(
 register(
     id="gym_hil/PandaPickCubeViewer-v0",
     entry_point=lambda **kwargs: PassiveViewerWrapper(gym.make("gym_hil/PandaPickCubeBase-v0", **kwargs)),
+    max_episode_steps=100,
+)
+
+# Register the dual viewer wrapper
+register(
+    id="gym_hil/PandaPickCubeDualView-v0",
+    entry_point=lambda **kw: DualViewportWrapper(gym.make("gym_hil/PandaPickCubeBase-v0", **kw), image_size=(128,128)),
     max_episode_steps=100,
 )
 
