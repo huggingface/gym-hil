@@ -3,8 +3,14 @@ import numpy as np
 import gymnasium as gym
 import gym_hil
 
-env = gym.make("gym_hil/PandaPickCubeDualView-v0", render_mode="rgb_array", image_obs=True)
+from gym_hil.wrappers.viewer_wrapper import DualViewportWrapper
+
+
+base = gym.make("gym_hil/PandaPickCubeBase-v0", render_mode=None, image_obs=False)
+env = DualViewportWrapper(base, image_size=(128, 128))
+
 obs, info = env.reset()
+
 a = np.zeros(env.action_space.shape, dtype=np.float32)
 
 try:

@@ -19,6 +19,7 @@ from __future__ import annotations
 import gymnasium as gym
 import mujoco
 import mujoco.viewer
+import numpy as np
 
 from mujoco.glfw import glfw
 
