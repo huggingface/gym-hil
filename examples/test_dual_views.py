@@ -1,24 +1,26 @@
 import time
-import numpy as np
+
 import gymnasium as gym
-import gym_hil
+import numpy as np
 
-from gym_hil.wrappers.viewer_wrapper import DualViewportWrapper
+import gym_hil  # noqa: F401
 
-
-base = gym.make("gym_hil/PandaPickCubeBase-v0", render_mode=None, image_obs=False)
-env = DualViewportWrapper(base, image_size=(128, 128))
-
+env = gym.make("gym_hil/PandaPickCubeDualViewGamepad-v0")
 obs, info = env.reset()
-
-a = np.zeros(env.action_space.shape, dtype=np.float32)
+dummy_action = np.zeros(4, dtype=np.float32)
+dummy_action[-1] = 1
 
 try:
     while True:
-        obs, r, term, trunc, info = env.step(a)
+        obs, r, term, trunc, info = env.step(dummy_action)
+
+        if info.get("viewer_closed"):
+            break
 
         if term or trunc:
-            obs, info = env.reset()
+            print("Episode ended, resetting environment")
+            obs, _ = env.reset()
+
         time.sleep(0.02)
 finally:
     env.close()

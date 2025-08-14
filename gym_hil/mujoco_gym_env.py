@@ -128,7 +128,7 @@ class FrankaGymEnv(MujocoGymEnv):
         image_obs: bool = False,
         home_position: np.ndarray = np.asarray((0, -0.785, 0, -2.35, 0, 1.57, np.pi / 4)),  # noqa: B008
         cartesian_bounds: np.ndarray = np.asarray([[0.2, -0.3, 0], [0.6, 0.3, 0.5]]),  # noqa: B008
-        eager_renderer: bool = False,
+        create_renderer: bool = True,
     ):
         if xml_path is None:
             xml_path = Path(__file__).parent.parent / "gym_hil" / "assets" / "scene.xml"
@@ -150,6 +150,7 @@ class FrankaGymEnv(MujocoGymEnv):
         }
 
         self.render_mode = render_mode
+        self.create_renderer = create_renderer
         self.image_obs = image_obs
 
         # Setup cameras
@@ -169,7 +170,7 @@ class FrankaGymEnv(MujocoGymEnv):
         self._setup_observation_space()
         self._setup_action_space()
 
-        if eager_renderer:
+        if self.create_renderer:
             # Initialize renderer
             self._viewer = mujoco.Renderer(self.model, height=render_spec.height, width=render_spec.width)
             self._viewer.render()

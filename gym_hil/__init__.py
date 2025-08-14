@@ -18,13 +18,14 @@ import gymnasium as gym
 
 from gym_hil.mujoco_gym_env import FrankaGymEnv, GymRenderingSpec, MujocoGymEnv
 from gym_hil.wrappers.factory import make_env, wrap_env
-from gym_hil.wrappers.viewer_wrapper import PassiveViewerWrapper, DualViewportWrapper
+from gym_hil.wrappers.viewer_wrapper import DualViewportWrapper, PassiveViewerWrapper
 
 __all__ = [
     "MujocoGymEnv",
     "FrankaGymEnv",
     "GymRenderingSpec",
     "PassiveViewerWrapper",
+    "DualViewportWrapper",
     "make_env",
     "wrap_env",
 ]
@@ -54,8 +55,24 @@ register(
 # Register the dual viewer wrapper
 register(
     id="gym_hil/PandaPickCubeDualView-v0",
-    entry_point=lambda **kw: DualViewportWrapper(gym.make("gym_hil/PandaPickCubeBase-v0", **kw), image_size=(128,128)),
+    entry_point=lambda **kwargs: DualViewportWrapper(gym.make("gym_hil/PandaPickCubeBase-v0", **kwargs)),
     max_episode_steps=100,
+    kwargs={
+        "create_renderer": False,
+    }
+)
+
+# Register the dual viewer wrapper with gamepad
+register(
+    id="gym_hil/PandaPickCubeDualViewGamepad-v0",
+    entry_point="gym_hil.wrappers.factory:make_env",
+    max_episode_steps=100,
+    kwargs={
+        "env_id": "gym_hil/PandaPickCubeBase-v0",  # Use the base environment
+        "use_dual_viewer": True,
+        "use_gamepad": True,
+        "create_renderer": False,
+    },
 )
 
 register(

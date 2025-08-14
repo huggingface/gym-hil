@@ -13,7 +13,7 @@ from gym_hil.wrappers.hil_wrappers import (
     InputsControlWrapper,
     ResetDelayWrapper,
 )
-from gym_hil.wrappers.viewer_wrapper import PassiveViewerWrapper
+from gym_hil.wrappers.viewer_wrapper import DualViewportWrapper, PassiveViewerWrapper
 
 
 class EEActionStepSize(TypedDict):
@@ -26,6 +26,7 @@ def wrap_env(
     env: gym.Env,
     ee_step_size: EEActionStepSize | None = None,
     use_viewer: bool = False,
+    use_dual_viewer: bool = False,
     use_gamepad: bool = False,
     use_gripper: bool = True,
     use_inputs_control: bool = False,
@@ -78,6 +79,9 @@ def wrap_env(
     if use_viewer:
         env = PassiveViewerWrapper(env, show_left_ui=show_ui, show_right_ui=show_ui)
 
+    if use_dual_viewer:
+        env = DualViewportWrapper(env)
+
     # Apply time delay wrapper
     env = ResetDelayWrapper(env, delay_seconds=reset_delay_seconds)
 
@@ -88,6 +92,7 @@ def make_env(
     env_id: str,
     ee_step_size: EEActionStepSize | None = None,
     use_viewer: bool = False,
+    use_dual_viewer: bool = False,
     use_gamepad: bool = False,
     use_gripper: bool = True,
     use_inputs_control: bool = False,
@@ -129,6 +134,7 @@ def make_env(
         env,
         ee_step_size=ee_step_size,
         use_viewer=use_viewer,
+        use_dual_viewer=use_dual_viewer,
         use_gamepad=use_gamepad,
         use_gripper=use_gripper,
         use_inputs_control=use_inputs_control,
