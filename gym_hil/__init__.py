@@ -59,7 +59,7 @@ register(
     max_episode_steps=100,
     kwargs={
         "create_renderer": False,
-    }
+    },
 )
 
 # Register the dual viewer wrapper with gamepad

@@ -259,7 +259,7 @@ class DualViewportWrapper(gym.Wrapper):
         """Clean up resources and close the environment."""
         if hasattr(self, "_renderers"):
             for renderer in self._renderers.values():
-                try: # noqa: SIM105
+                try:  # noqa: SIM105
                     renderer.close()
                 except Exception:
                     pass
