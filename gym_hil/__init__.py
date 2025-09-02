@@ -64,6 +64,8 @@ register(
     max_episode_steps=100,
     kwargs={
         "env_id": "gym_hil/PandaPickCubeBase-v0",  # Use the base environment
+        "use_inputs_control": False,
+        "gripper_penalty": -0.05,
     },
 )
 
@@ -74,6 +76,7 @@ register(
     kwargs={
         "env_id": "gym_hil/PandaPickCubeBase-v0",  # Use the base environment
         "use_viewer": True,
+        "use_inputs_control": True,
         "use_gamepad": True,
     },
 )
@@ -84,8 +87,9 @@ register(
     max_episode_steps=100,
     kwargs={
         "env_id": "gym_hil/PandaPickCubeBase-v0",  # Use the base environment
-        "use_viewer": True,
+        "use_viewer": False,
         "gripper_penalty": -0.05,
+        "use_inputs_control": True,
     },
 )
 
@@ -105,6 +109,7 @@ register(
     kwargs={
         "env_id": "gym_hil/PandaArrangeBoxesBase-v0",  # Use the base environment
         "use_viewer": True,
+        "use_inputs_control": True,
         "use_gamepad": True,
     },
 )
@@ -113,5 +118,10 @@ register(
     id="gym_hil/PandaArrangeBoxesKeyboard-v0",
     entry_point="gym_hil.wrappers.factory:make_env",
     max_episode_steps=100,
-    kwargs={"env_id": "gym_hil/PandaArrangeBoxesBase-v0", "use_viewer": True, "gripper_penalty": -0.05},
+    kwargs={
+        "env_id": "gym_hil/PandaArrangeBoxesBase-v0",
+        "use_viewer": True,
+        "gripper_penalty": -0.05,
+        "use_inputs_control": True,
+    },
 )
