@@ -26,6 +26,7 @@ def wrap_env(
     env: gym.Env,
     ee_step_size: EEActionStepSize | None = None,
     use_viewer: bool = False,
+    use_input_control: bool = True,
     use_gamepad: bool = False,
     use_gripper: bool = True,
     auto_reset: bool = False,
@@ -60,16 +61,17 @@ def wrap_env(
     env = EEActionWrapper(env, ee_action_step_size=ee_step_size, use_gripper=True)
 
     # Apply control wrappers last
-    env = InputsControlWrapper(
-        env,
-        x_step_size=1.0,
-        y_step_size=1.0,
-        z_step_size=1.0,
-        use_gripper=use_gripper,
-        auto_reset=auto_reset,
-        use_gamepad=use_gamepad,
-        controller_config_path=controller_config_path,
-    )
+    if use_input_control:
+        env = InputsControlWrapper(
+            env,
+            x_step_size=1.0,
+            y_step_size=1.0,
+            z_step_size=1.0,
+            use_gripper=use_gripper,
+            auto_reset=auto_reset,
+            use_gamepad=use_gamepad,
+            controller_config_path=controller_config_path,
+        )
 
     # Apply wrappers in the correct order
     if use_viewer:
