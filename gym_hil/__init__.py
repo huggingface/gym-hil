@@ -87,7 +87,7 @@ register(
     max_episode_steps=100,
     kwargs={
         "env_id": "gym_hil/PandaPickCubeBase-v0",  # Use the base environment
-        "use_viewer": False,
+        "use_viewer": True,
         "gripper_penalty": -0.05,
         "use_inputs_control": True,
     },
