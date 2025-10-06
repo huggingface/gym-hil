@@ -38,7 +38,7 @@ classifiers = [
 ]
 dependencies = [
     "mujoco>=2.3.7,<=3.0.0",
-    "gymnasium==0.29.1",
+    "gymnasium>=0.29.1,<=1.1.0",
     "pygame>=2.5.1",
     "pynput>=1.7.7",
     "hidapi>=0.14.0",
