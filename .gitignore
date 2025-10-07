@@ -130,3 +130,6 @@ dmypy.json
 
 # MuJoCo's default log file
 MUJOCO_LOG.TXT
+
+/gh
+/dataset_configs
