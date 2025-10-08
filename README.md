@@ -68,7 +68,7 @@ frames = []
 for i in range(200):
     obs, rew, done, truncated, info = env.step(env.action_space.sample())
     # info contains the key "is_intervention" (boolean) indicating if a human intervention occurred
-    # If info["is_intervention"] is True, then info["action_intervention"] contains the action that was executed
+    # If info["is_intervention"] is True, then info["teleop_action"] contains the action that was executed
     images = obs["pixels"]
     frames.append(np.concatenate((images["front"], images["wrist"]), axis=0))
 

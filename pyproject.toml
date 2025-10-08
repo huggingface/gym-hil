@@ -18,7 +18,7 @@ issues = "https://github.com/huggingface/gym-hil/issues"
 
 [project]
 name = "gym-hil"
-version = "0.1.10"
+version = "0.1.12"
 description = "A gymnasium environment for Human-in-the-Loop Reinforcement Learning"
 authors = [
   {name = "Khalil Meftah", email = "kmeftah.khalil@gmail.com"},
@@ -37,8 +37,8 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
 ]
 dependencies = [
-    "mujoco>=2.3.7,<3.0.0",
-    "gymnasium==0.29.1",
+    "mujoco>=2.3.7,<=3.0.0",
+    "gymnasium>=0.29.1,<=1.1.0",
     "pygame>=2.5.1",
     "pynput>=1.7.7",
     "hidapi>=0.14.0",
