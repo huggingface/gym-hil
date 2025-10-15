@@ -28,6 +28,7 @@ def wrap_env(
     use_viewer: bool = False,
     use_gamepad: bool = False,
     use_gripper: bool = True,
+    use_inputs_control: bool = False,
     auto_reset: bool = False,
     show_ui: bool = True,
     gripper_penalty: float = -0.02,
@@ -42,6 +43,7 @@ def wrap_env(
         use_viewer: Whether to add a passive viewer
         use_gamepad: Whether to use gamepad instead of keyboard controls
         use_gripper: Whether to enable gripper control
+        use_inputs_control: Whether to use inputs control
         auto_reset: Whether to automatically reset the environment when episode ends
         show_ui: Whether to show UI panels in the viewer
         gripper_penalty: Penalty for using the gripper
@@ -59,17 +61,18 @@ def wrap_env(
         ee_step_size = DEFAULT_EE_STEP_SIZE
     env = EEActionWrapper(env, ee_action_step_size=ee_step_size, use_gripper=True)
 
-    # Apply control wrappers last
-    env = InputsControlWrapper(
-        env,
-        x_step_size=1.0,
-        y_step_size=1.0,
-        z_step_size=1.0,
-        use_gripper=use_gripper,
-        auto_reset=auto_reset,
-        use_gamepad=use_gamepad,
-        controller_config_path=controller_config_path,
-    )
+    if use_inputs_control:
+        # Apply control wrappers last
+        env = InputsControlWrapper(
+            env,
+            x_step_size=1.0,
+            y_step_size=1.0,
+            z_step_size=1.0,
+            use_gripper=use_gripper,
+            auto_reset=auto_reset,
+            use_gamepad=use_gamepad,
+            controller_config_path=controller_config_path,
+        )
 
     # Apply wrappers in the correct order
     if use_viewer:
@@ -87,6 +90,7 @@ def make_env(
     use_viewer: bool = False,
     use_gamepad: bool = False,
     use_gripper: bool = True,
+    use_inputs_control: bool = False,
     auto_reset: bool = False,
     show_ui: bool = True,
     gripper_penalty: float = -0.02,
@@ -102,6 +106,7 @@ def make_env(
         use_viewer: Whether to add a passive viewer
         use_gamepad: Whether to use gamepad instead of keyboard controls
         use_gripper: Whether to enable gripper control
+        use_inputs_control: Whether to use inputs control
         auto_reset: Whether to automatically reset the environment when episode ends
         show_ui: Whether to show UI panels in the viewer
         gripper_penalty: Penalty for using the gripper
@@ -126,6 +131,7 @@ def make_env(
         use_viewer=use_viewer,
         use_gamepad=use_gamepad,
         use_gripper=use_gripper,
+        use_inputs_control=use_inputs_control,
         auto_reset=auto_reset,
         show_ui=show_ui,
         gripper_penalty=gripper_penalty,
