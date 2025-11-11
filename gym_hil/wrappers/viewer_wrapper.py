@@ -143,7 +143,7 @@ class DualViewportWrapper(gym.Wrapper):
         view_camera_left: str = "front",
         view_camera_right: str = "handcam_rgb",
         observation_camera_names: tuple[str, str] = ("front", "wrist"),
-        observation_image_sizes: tuple[tuple[int, int], tuple[int, int]] = ((128, 128), (128, 128)),
+        observation_image_sizes: tuple[tuple[int, int], tuple[int, int]] = ((256, 256), (128, 128)),
         window_title: str = "MuJoCo — Dual Viewports",
     ) -> None:
         super().__init__(env)
@@ -187,8 +187,30 @@ class DualViewportWrapper(gym.Wrapper):
 
             self._observation_camera_ids = [
                 mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_CAMERA, name)
-                for name in observation_camera_names
+                for name in (view_camera_left, view_camera_right)
             ]
+
+            # Update observation space to reflect the actual image sizes
+            prev_space = self.observation_space
+            new_space = {}
+
+            for key in prev_space.spaces:
+                if key == "pixels":
+                    pixels_space = {}
+                    for name, (height, width) in zip(
+                        observation_camera_names, observation_image_sizes, strict=True
+                    ):
+                        pixels_space[name] = gym.spaces.Box(
+                            low=0,
+                            high=255,
+                            shape=(height, width, 3),
+                            dtype=env.observation_space.spaces["pixels"].spaces[name].dtype,
+                        )
+                    new_space[key] = gym.spaces.Dict(pixels_space)
+                else:
+                    new_space[key] = prev_space.spaces[key]
+
+            self.observation_space = gym.spaces.Dict(new_space)
 
     def _on_close(self, window) -> None:
         self._closed = True
