@@ -117,6 +117,11 @@ class MujocoGymEnv(gym.Env):
 class FrankaGymEnv(MujocoGymEnv):
     """Base class for Franka Panda robot environments."""
 
+    metadata = {
+        "render_modes": ["human", "rgb_array"],
+        "render_fps": 50,
+    }
+
     def __init__(
         self,
         xml_path: Path | None = None,
@@ -144,11 +149,7 @@ class FrankaGymEnv(MujocoGymEnv):
         self._home_position = home_position
         self._cartesian_bounds = cartesian_bounds
 
-        self.metadata = {
-            "render_modes": ["human", "rgb_array"],
-            "render_fps": int(np.round(1.0 / self.control_dt)),
-        }
-
+        self.metadata["render_fps"] = int(np.round(1.0 / self.control_dt))
         self.render_mode = render_mode
         self.create_renderer = create_renderer
         self.image_obs = image_obs
@@ -262,7 +263,7 @@ class FrankaGymEnv(MujocoGymEnv):
 
     def get_robot_state(self):
         """Get the current state of the robot."""
-        tcp_pos = self._data.sensor("2f85/pinch_pos").data
+        tcp_pos = self._data.sensor("2f85/pinch_pos").data.astype(np.float32)
         # tcp_quat = self._data.sensor("2f85/pinch_quat").data
         # tcp_vel = self._data.sensor("2f85/pinch_vel").data
         # tcp_angvel = self._data.sensor("2f85/pinch_angvel").data
