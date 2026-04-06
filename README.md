@@ -182,6 +182,79 @@ All environments in `gym-hil` are designed to work seamlessly with Hugging Face'
 - Train agents with human feedback
 - Perform interactive learning with human intervention
 
+## SmolVLA Example
+
+You can run a SmolVLA checkpoint in `gym-hil` through LeRobot's policy processors:
+
+```bash
+pip install -e .
+pip install "lerobot[smolvla]"
+python examples/run_smolvla_policy.py \
+  --policy-path path/to/your/gym_hil_smolvla_checkpoint \
+  --task "Pick up the cube." \
+  --device cuda
+```
+
+The example validates the checkpoint action dimension before the rollout starts.
+If your checkpoint was trained with camera names different from `front` and `wrist`,
+use `--camera-key-map`, for example `front=observation.images.camera1`.
+If the checkpoint expects more camera streams than `gym-hil` provides, add
+`--fill-missing-cameras` to synthesize black images for the missing views.
+
+## Minimal SmolVLA Fine-Tuning Workflow
+
+`lerobot/smolvla_base` is a foundation checkpoint, so it usually needs to be
+fine-tuned on a `gym-hil` dataset before it can solve these tasks.
+
+### 1. Record a local dataset
+
+An example keyboard recording config is provided at
+`examples/configs/gym_hil_record_keyboard_local.json`.
+Edit `dataset.repo_id`, `dataset.root`, and `dataset.num_episodes_to_record`
+to match your setup, then run:
+
+```bash
+python -m lerobot.rl.gym_manipulator \
+  --config_path examples/configs/gym_hil_record_keyboard_local.json
+```
+
+Swap `PandaPickCubeKeyboard-v0` for `PandaPickCubeGamepad-v0` if you want to
+teleoperate with a gamepad.
+
+### 2. Fine-tune `smolvla_base` on the recorded dataset
+
+`lerobot/smolvla_base` expects camera slots named `camera1`, `camera2`, and
+`camera3`, while `gym-hil` records `front` and `wrist`. Use a `rename_map` for
+the two real cameras and `--policy.empty_cameras=1` for the missing third slot:
+
+```bash
+lerobot-train \
+  --policy.path=lerobot/smolvla_base \
+  --dataset.repo_id=local/gym_hil_pickcube_seed \
+  --dataset.root=./data/lerobot/gym_hil_pickcube_seed \
+  --rename_map='{"observation.images.front":"observation.images.camera1","observation.images.wrist":"observation.images.camera2"}' \
+  --policy.empty_cameras=1 \
+  --policy.push_to_hub=false \
+  --policy.device=cuda \
+  --batch_size=8 \
+  --num_workers=0 \
+  --steps=20000 \
+  --output_dir=outputs/train/gym_hil_smolvla \
+  --job_name=gym_hil_smolvla
+```
+
+### 3. Run the fine-tuned checkpoint in `gym-hil`
+
+```bash
+python examples/run_smolvla_policy.py \
+  --policy-path outputs/train/gym_hil_smolvla/checkpoints/last/pretrained_model \
+  --task "Pick up the cube." \
+  --device cuda \
+  --camera-key-map front=camera1 \
+  --camera-key-map wrist=camera2 \
+  --fill-missing-cameras
+```
+
 ## Contribute
 
 ```bash
