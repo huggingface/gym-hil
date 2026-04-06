@@ -184,7 +184,8 @@ All environments in `gym-hil` are designed to work seamlessly with Hugging Face'
 
 ## SmolVLA Example
 
-You can run a SmolVLA checkpoint in `gym-hil` through LeRobot's policy processors:
+If you already have a SmolVLA checkpoint fine-tuned on a `gym-hil` dataset,
+you can run it in `gym-hil` with:
 
 ```bash
 pip install -e .
@@ -195,37 +196,43 @@ python examples/run_smolvla_policy.py \
   --device cuda
 ```
 
-The example validates the checkpoint action dimension before the rollout starts.
-If your checkpoint was trained with camera names different from `front` and `wrist`,
-use `--camera-key-map`, for example `front=observation.images.camera1`.
-If the checkpoint expects more camera streams than `gym-hil` provides, add
-`--fill-missing-cameras` to synthesize black images for the missing views.
+The example is meant to be a practical starting point. Before rollout, it:
+
+- checks that the checkpoint action dimension matches the environment
+- lets you remap camera names with `--camera-key-map`
+- can fill missing camera slots with black images via `--fill-missing-cameras`
+
+That camera remapping matters because `gym-hil` records `front` and `wrist`,
+while many SmolVLA checkpoints expect names like `camera1`, `camera2`, and
+`camera3`.
 
 ## Minimal SmolVLA Fine-Tuning Workflow
 
 `lerobot/smolvla_base` is a foundation checkpoint, so it usually needs to be
-fine-tuned on a `gym-hil` dataset before it can solve these tasks.
+fine-tuned on a `gym-hil` dataset before it can solve these tasks. If you are
+starting from scratch, this is the shortest path:
 
 ### 1. Record a local dataset
 
 An example keyboard recording config is provided at
-`examples/configs/gym_hil_record_keyboard_local.json`.
-Edit `dataset.repo_id`, `dataset.root`, and `dataset.num_episodes_to_record`
-to match your setup, then run:
+`examples/configs/gym_hil_record_keyboard_local.json`. Treat it as a starting
+point: update `dataset.repo_id`, `dataset.root`, and
+`dataset.num_episodes_to_record` for your setup, then run:
 
 ```bash
 python -m lerobot.rl.gym_manipulator \
   --config_path examples/configs/gym_hil_record_keyboard_local.json
 ```
 
-Swap `PandaPickCubeKeyboard-v0` for `PandaPickCubeGamepad-v0` if you want to
-teleoperate with a gamepad.
+If you prefer a gamepad, swap `PandaPickCubeKeyboard-v0` for
+`PandaPickCubeGamepad-v0`.
 
 ### 2. Fine-tune `smolvla_base` on the recorded dataset
 
 `lerobot/smolvla_base` expects camera slots named `camera1`, `camera2`, and
-`camera3`, while `gym-hil` records `front` and `wrist`. Use a `rename_map` for
-the two real cameras and `--policy.empty_cameras=1` for the missing third slot:
+`camera3`, while `gym-hil` records `front` and `wrist`. The command below maps
+the two real cameras into the expected names and uses
+`--policy.empty_cameras=1` for the missing third view:
 
 ```bash
 lerobot-train \
@@ -244,6 +251,8 @@ lerobot-train \
 ```
 
 ### 3. Run the fine-tuned checkpoint in `gym-hil`
+
+Once training finishes, point the example script at the checkpoint directory:
 
 ```bash
 python examples/run_smolvla_policy.py \
