@@ -39,6 +39,10 @@ def main():
     parser.add_argument(
         "--controller-config", type=str, default=None, help="Path to controller configuration JSON file"
     )
+    parser.add_argument(
+        "--record-duration", type=float, default=10.0, help="Duration of episode recording in seconds (default: 10s)"
+    )
+
     args = parser.parse_args()
 
     # Create Franka environment - Use base environment first to debug
@@ -65,7 +69,7 @@ def main():
         render_mode=args.render_mode,
         image_obs=True,
         use_gamepad=not args.use_keyboard,
-        max_episode_steps=1000,  # 100 seconds * 10Hz
+        max_episode_steps=int(args.record_duration * 10),  # assume 10 steps per second
     )
 
     # Print observation space for the wrapped environment
