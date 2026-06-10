@@ -19,6 +19,7 @@ from __future__ import annotations
 import gymnasium as gym
 import mujoco
 import mujoco.viewer
+from mujoco.glfw import glfw
 
 
 class PassiveViewerWrapper(gym.Wrapper):
@@ -117,3 +118,181 @@ class PassiveViewerWrapper(gym.Wrapper):
                 self._viewer.close()
             except Exception:
                 pass
+
+
+class DualViewportWrapper(gym.Wrapper):
+    """
+    A dual viewport wrapper that uses GLFW for the operator view (dual viewport)
+    and the MuJoCo Renderer for image-based observations.
+
+    Args:
+        env (gym.Env): The environment to wrap.
+        view_camera_left (str): The name of the camera for the left viewport.
+        view_camera_right (str): The name of the camera for the right viewport.
+        observation_camera_names (tuple[str, str]): A tuple containing the names
+            of the cameras used for generating observations.
+        observation_image_sizes (tuple[tuple[int, int], tuple[int, int]]):
+            A tuple of tuples, where each inner tuple specifies the (height, width)
+            of the observation images for the corresponding camera.
+        window_title (str): The title of the GLFW window.
+    """
+
+    def __init__(
+        self,
+        env: gym.Env,
+        view_camera_left: str = "front",
+        view_camera_right: str = "handcam_rgb",
+        observation_camera_names: tuple[str, str] = ("front", "wrist"),
+        observation_image_sizes: tuple[tuple[int, int], tuple[int, int]] = ((256, 256), (128, 128)),
+        window_title: str = "MuJoCo — Dual Viewports",
+    ) -> None:
+        super().__init__(env)
+
+        self.model = self.env.unwrapped.model
+        self.data = self.env.unwrapped.data
+        self.observation_camera_names = observation_camera_names
+
+        if not glfw.init():
+            raise RuntimeError("Could not initialize GLFW")
+        glfw.window_hint(glfw.SAMPLES, value=4)  # 4x MSAA
+        self._window = glfw.create_window(1280, 720, window_title, None, None)
+        if not self._window:
+            glfw.terminate()
+            raise RuntimeError("GLFW window creation failed")
+
+        glfw.make_context_current(self._window)
+        glfw.swap_interval(1)
+
+        self._opt = mujoco.MjvOption()
+        mujoco.mjv_defaultOption(self._opt)
+        self._scn = mujoco.MjvScene(self.model, maxgeom=2000)
+        self._con = mujoco.MjrContext(self.model, mujoco.mjtFontScale.mjFONTSCALE_100)
+
+        self._camera_left = self._make_camera(view_camera_left)
+        self._camera_right = self._make_camera(view_camera_right)
+
+        self._closed = False
+        glfw.set_window_close_callback(self._window, self._on_close)
+
+        self.has_images = (
+            hasattr(env.observation_space, "spaces") and "pixels" in env.observation_space.spaces
+        )
+
+        if self.has_images:
+            self._renderers = {}
+            for name, (height, width) in zip(observation_camera_names, observation_image_sizes, strict=True):
+                self.model.vis.global_.offwidth = width
+                self.model.vis.global_.offheight = height
+                self._renderers[name] = mujoco.Renderer(self.model, width=width, height=height)
+
+            self._observation_camera_ids = [
+                mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_CAMERA, name)
+                for name in (view_camera_left, view_camera_right)
+            ]
+
+            # Update observation space to reflect the actual image sizes
+            prev_space = self.observation_space
+            new_space = {}
+
+            for key in prev_space.spaces:
+                if key == "pixels":
+                    pixels_space = {}
+                    for name, (height, width) in zip(
+                        observation_camera_names, observation_image_sizes, strict=True
+                    ):
+                        pixels_space[name] = gym.spaces.Box(
+                            low=0,
+                            high=255,
+                            shape=(height, width, 3),
+                            dtype=env.observation_space.spaces["pixels"].spaces[name].dtype,
+                        )
+                    new_space[key] = gym.spaces.Dict(pixels_space)
+                else:
+                    new_space[key] = prev_space.spaces[key]
+
+            self.observation_space = gym.spaces.Dict(new_space)
+
+    def _on_close(self, window) -> None:
+        self._closed = True
+
+    def _make_camera(self, name: str) -> mujoco.MjvCamera:
+        camera = mujoco.MjvCamera()
+        mujoco.mjv_defaultCamera(camera)
+        camera_id = mujoco.mj_name2id(self.model, mujoco.mjtObj.mjOBJ_CAMERA, name)
+        camera.type = mujoco.mjtCamera.mjCAMERA_FIXED
+        camera.fixedcamid = camera_id
+        return camera
+
+    def _capture_observation_images(self) -> dict[str, any]:
+        """Render small images for reinforcement learning, keyed by camera names."""
+        pixels = {}
+        for name, camera_id in zip(self.observation_camera_names, self._observation_camera_ids, strict=True):
+            renderer = self._renderers[name]
+            renderer.update_scene(self.data, camera=camera_id)
+            pixels[name] = renderer.render()
+        return pixels
+
+    def _draw_dual_view(self) -> None:
+        if self._window is None or self._closed:
+            return
+        glfw.make_context_current(self._window)
+        mujoco.mjr_setBuffer(int(mujoco.mjtFramebuffer.mjFB_WINDOW), self._con)
+        width, height = glfw.get_framebuffer_size(self._window)
+        left = mujoco.MjrRect(0, 0, width // 2, height)
+        right = mujoco.MjrRect(width // 2, 0, width - width // 2, height)
+        # left
+        mujoco.mjv_updateScene(
+            self.model, self.data, self._opt, None, self._camera_left, mujoco.mjtCatBit.mjCAT_ALL, self._scn
+        )
+        mujoco.mjr_render(left, self._scn, self._con)
+        # right
+        mujoco.mjv_updateCamera(self.model, self.data, self._camera_right, self._scn)
+        mujoco.mjr_render(right, self._scn, self._con)
+        glfw.swap_buffers(self._window)
+        glfw.poll_events()
+
+    # ---------------------------------------------------------------------
+    # Gym API overrides
+
+    def reset(self, **kwargs):
+        observation, info = self.env.reset(**kwargs)
+        if self.has_images:
+            pixels = self._capture_observation_images()
+            observation["pixels"] = pixels
+        self._draw_dual_view()  # first draw
+        if self._closed:
+            info = dict(info)
+            info["viewer_closed"] = True
+        return observation, info
+
+    def step(self, action):
+        observation, reward, terminated, truncated, info = self.env.step(action)
+        if self.has_images:
+            pixels = self._capture_observation_images()
+            observation["pixels"] = pixels
+        self._draw_dual_view()
+        if self._closed:
+            info = dict(info)
+            info["viewer_closed"] = True
+            # trunc = True # Stop the episode
+        return observation, reward, terminated, truncated, info
+
+    def close(self) -> None:
+        """Clean up resources and close the environment."""
+        if hasattr(self, "_renderers"):
+            for renderer in self._renderers.values():
+                try:  # noqa: SIM105
+                    renderer.close()
+                except Exception:
+                    pass
+
+        if self._window:
+            try:
+                glfw.set_window_close_callback(self._window, None)
+                glfw.destroy_window(self._window)
+            except Exception:
+                pass
+            finally:
+                self._window = None
+                glfw.terminate()
+        super().close()

@@ -70,13 +70,13 @@ class EEActionWrapper(gym.ActionWrapper):
         action_space_bounds_max = np.ones(num_actions)
 
         if self.use_gripper:
-            action_space_bounds_min = np.concatenate([action_space_bounds_min, [0.0]])
-            action_space_bounds_max = np.concatenate([action_space_bounds_max, [2.0]])
+            action_space_bounds_min = np.concatenate([action_space_bounds_min, [-1.0]])
+            action_space_bounds_max = np.concatenate([action_space_bounds_max, [1.0]])
             num_actions += 1
 
         ee_action_space = gym.spaces.Box(
-            low=action_space_bounds_min,
-            high=action_space_bounds_max,
+            low=action_space_bounds_min.astype(np.float32),
+            high=action_space_bounds_max.astype(np.float32),
             shape=(num_actions,),
             dtype=np.float32,
         )
@@ -97,7 +97,7 @@ class EEActionWrapper(gym.ActionWrapper):
         gripper_open_command = [0.0]
         if self.use_gripper:
             # NOTE: Normalize gripper action from [0, 2] -> [-1, 1]
-            gripper_open_command = [action[-1] - 1.0]
+            gripper_open_command = [action[-1]]
 
         action = np.concatenate([action_xyz, actions_orn, gripper_open_command])
         return action
@@ -192,11 +192,11 @@ class InputsControlWrapper(gym.Wrapper):
         if self.use_gripper:
             gripper_command = self.controller.gripper_command()
             if gripper_command == "open":
-                gamepad_action = np.concatenate([gamepad_action, [2.0]])
-            elif gripper_command == "close":
-                gamepad_action = np.concatenate([gamepad_action, [0.0]])
-            else:
                 gamepad_action = np.concatenate([gamepad_action, [1.0]])
+            elif gripper_command == "close":
+                gamepad_action = np.concatenate([gamepad_action, [-1.0]])
+            else:
+                gamepad_action = np.concatenate([gamepad_action, [0.0]])
 
         # Check episode ending buttons
         # We'll rely on controller.get_episode_end_status() which returns "success", "failure", or None

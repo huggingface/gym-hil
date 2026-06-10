@@ -117,6 +117,11 @@ class MujocoGymEnv(gym.Env):
 class FrankaGymEnv(MujocoGymEnv):
     """Base class for Franka Panda robot environments."""
 
+    metadata = {
+        "render_modes": ["human", "rgb_array"],
+        "render_fps": 50,
+    }
+
     def __init__(
         self,
         xml_path: Path | None = None,
@@ -128,6 +133,7 @@ class FrankaGymEnv(MujocoGymEnv):
         image_obs: bool = False,
         home_position: np.ndarray = np.asarray((0, -0.785, 0, -2.35, 0, 1.57, np.pi / 4)),  # noqa: B008
         cartesian_bounds: np.ndarray = np.asarray([[0.2, -0.3, 0], [0.6, 0.3, 0.5]]),  # noqa: B008
+        create_renderer: bool = True,
     ):
         if xml_path is None:
             xml_path = Path(__file__).parent.parent / "gym_hil" / "assets" / "scene.xml"
@@ -143,12 +149,9 @@ class FrankaGymEnv(MujocoGymEnv):
         self._home_position = home_position
         self._cartesian_bounds = cartesian_bounds
 
-        self.metadata = {
-            "render_modes": ["human", "rgb_array"],
-            "render_fps": int(np.round(1.0 / self.control_dt)),
-        }
-
+        self.metadata["render_fps"] = int(np.round(1.0 / self.control_dt))
         self.render_mode = render_mode
+        self.create_renderer = create_renderer
         self.image_obs = image_obs
 
         # Setup cameras
@@ -168,9 +171,10 @@ class FrankaGymEnv(MujocoGymEnv):
         self._setup_observation_space()
         self._setup_action_space()
 
-        # Initialize renderer
-        self._viewer = mujoco.Renderer(self.model, height=render_spec.height, width=render_spec.width)
-        self._viewer.render()
+        if self.create_renderer:
+            # Initialize renderer
+            self._viewer = mujoco.Renderer(self.model, height=render_spec.height, width=render_spec.width)
+            self._viewer.render()
 
     def _setup_observation_space(self):
         """Setup the observation space for the Franka environment."""
@@ -259,7 +263,7 @@ class FrankaGymEnv(MujocoGymEnv):
 
     def get_robot_state(self):
         """Get the current state of the robot."""
-        tcp_pos = self._data.sensor("2f85/pinch_pos").data
+        tcp_pos = self._data.sensor("2f85/pinch_pos").data.astype(np.float32)
         # tcp_quat = self._data.sensor("2f85/pinch_quat").data
         # tcp_vel = self._data.sensor("2f85/pinch_vel").data
         # tcp_angvel = self._data.sensor("2f85/pinch_angvel").data

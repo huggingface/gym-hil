@@ -40,6 +40,7 @@ class PandaPickCubeGymEnv(FrankaGymEnv):
         image_obs: bool = False,
         reward_type: str = "sparse",
         random_block_position: bool = False,
+        create_renderer: bool = True,
     ):
         self.reward_type = reward_type
 
@@ -52,6 +53,7 @@ class PandaPickCubeGymEnv(FrankaGymEnv):
             image_obs=image_obs,
             home_position=_PANDA_HOME,
             cartesian_bounds=_CARTESIAN_BOUNDS,
+            create_renderer=create_renderer,
         )
 
         # Task-specific setup
@@ -160,11 +162,19 @@ class PandaPickCubeGymEnv(FrankaGymEnv):
 
         if self.image_obs:
             # Image observations
-            front_view, wrist_view = self.render()
-            observation = {
-                "pixels": {"front": front_view, "wrist": wrist_view},
-                "agent_pos": robot_state,
-            }
+            if self.create_renderer:
+                front_view, wrist_view = self.render()
+                observation["pixels"] = {"front": front_view, "wrist": wrist_view}
+            else:
+                observation["pixels"] = {
+                    "front": np.zeros(
+                        (self._render_specs.height, self._render_specs.width, 3), dtype=np.uint8
+                    ),
+                    "wrist": np.zeros(
+                        (self._render_specs.height, self._render_specs.width, 3), dtype=np.uint8
+                    ),
+                }
+            observation["agent_pos"] = robot_state
         else:
             # State-only observations
             observation = {
