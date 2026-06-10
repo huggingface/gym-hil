@@ -1,0 +1,26 @@
+{
+  "env": {
+    "name": "gym_hil",
+    "task": "PandaPickCubeKeyboard-v0",
+    "fps": 10,
+    "processor": {
+      "gripper": {
+        "use_gripper": true,
+        "gripper_penalty": -0.05
+      },
+      "reset": {
+        "terminate_on_success": true
+      }
+    }
+  },
+  "dataset": {
+    "repo_id": "local/gym_hil_pickcube_seed",
+    "root": "./data/lerobot/gym_hil_pickcube_seed",
+    "task": "Pick up the cube.",
+    "num_episodes_to_record": 50,
+    "replay_episode": null,
+    "push_to_hub": false
+  },
+  "mode": "record",
+  "device": "cuda"
+}
