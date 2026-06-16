@@ -151,9 +151,9 @@ class KeyboardController(InputController):
                     self.key_states["forward_y"] = True
                 elif key == keyboard.Key.right:
                     self.key_states["backward_y"] = True
-                elif key == keyboard.Key.shift:
+                elif key == keyboard.Key.page_down:
                     self.key_states["backward_z"] = True
-                elif key == keyboard.Key.shift_r:
+                elif key == keyboard.Key.page_up:
                     self.key_states["forward_z"] = True
                 elif key == keyboard.Key.ctrl_r:
                     self.open_gripper_command = True
@@ -182,9 +182,9 @@ class KeyboardController(InputController):
                     self.key_states["forward_y"] = False
                 elif key == keyboard.Key.right:
                     self.key_states["backward_y"] = False
-                elif key == keyboard.Key.shift:
+                elif key == keyboard.Key.page_down:
                     self.key_states["backward_z"] = False
-                elif key == keyboard.Key.shift_r:
+                elif key == keyboard.Key.page_up:
                     self.key_states["forward_z"] = False
                 elif key == keyboard.Key.ctrl_r:
                     self.open_gripper_command = False
@@ -198,7 +198,7 @@ class KeyboardController(InputController):
 
         print("Keyboard controls:")
         print("  Arrow keys: Move in X-Y plane")
-        print("  Shift and Shift_R: Move in Z axis")
+        print("  Page Down and Page Up: Move in Z axis")
         print("  Right Ctrl and Left Ctrl: Open and close gripper")
         print("  Enter: End episode with SUCCESS")
         print("  Backspace: End episode with FAILURE")
