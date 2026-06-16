@@ -50,6 +50,7 @@ pip install -e .
 
 ## Franka Environment Quick Start
 
+Create `quickstart_env.py` with the following content:
 ```python
 import time
 import imageio
@@ -59,7 +60,7 @@ import numpy as np
 import gym_hil
 
 # Use the Franka environment
-env = gym.make("gym_hil/PandaPickCubeBase-v0", render_mode="human", image_obs=True)
+env = gym.make("gym_hil/PandaPickCubeBase-v0", image_obs=True)
 action_spec = env.action_space
 
 obs, info = env.reset()
@@ -78,6 +79,18 @@ for i in range(200):
 env.close()
 imageio.mimsave("franka_render_test.mp4", frames, fps=20)
 ```
+
+Run the script:
+```bash
+python quickstart_env.py
+```
+
+> **Note for Linux users:**  
+> When running the Franka environment, you may see warnings related to MuJoCo dependencies, such as missing GTK or `libdecor-gtk.so` plugin (e.g.,  
+> `libdecor-Message: Cannot load plugin libdecor-gtk.so`).  
+> These warnings can be safely ignored—they are not essential for running the environment and do not affect functionality.
+
+
 
 ## Available Environments
 
