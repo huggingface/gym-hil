@@ -300,6 +300,12 @@ class GamepadController(InputController):
 
     def update(self):
         """Process pygame events to get fresh gamepad readings."""
+        # No gamepad was detected in start(), so there is nothing to read and
+        # controller_config is still None. Mirror GamepadControllerHID._update()
+        # and no-op instead of dereferencing the missing config.
+        if not self.running:
+            return
+
         import pygame
 
         # Get button mappings from config
@@ -341,6 +347,11 @@ class GamepadController(InputController):
 
     def get_deltas(self):
         """Get the current movement deltas from gamepad state."""
+        # No gamepad was detected, so controller_config is None; return no
+        # movement rather than dereferencing it.
+        if not self.running:
+            return 0.0, 0.0, 0.0
+
         import pygame
 
         try:
