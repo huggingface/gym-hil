@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from gym_hil.wrappers.intervention_utils import load_controller_config
+from gym_hil.wrappers.intervention_utils import GamepadController, load_controller_config
 
 
 def test_load_controller_config():
@@ -51,3 +51,20 @@ def test_load_controller_config():
     # Test that when config_path is None, it falls back to bundled package config
     config_with_none = load_controller_config("default", None)
     assert config_with_none == config
+
+
+def test_gamepad_controller_no_device_is_noop():
+    """update() and get_deltas() must not crash when no gamepad was detected.
+
+    When no gamepad is connected, start() sets running=False and leaves
+    controller_config=None, so both methods should degrade gracefully instead
+    of raising AttributeError on the missing config.
+    """
+    controller = GamepadController()
+    # Reproduce the state start() leaves behind when no gamepad is present.
+    controller.running = False
+    assert controller.controller_config is None
+
+    controller.update()
+    assert controller.get_deltas() == (0.0, 0.0, 0.0)
+    assert controller.should_intervene() is False
