@@ -1,0 +1,22 @@
+# Added by hf-security-analysis when this repository was created.
+# Actions are pinned to commit SHAs across the organisation; a pinned
+# SHA is only safe while something raises it, and that something is
+# Dependabot. Edit this file freely — the bot writes it once and does
+# not come back.
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # Releases younger than this are not adopted. The hours right after a
+    # maintainer account is compromised are exactly when a fresh release
+    # is most dangerous — tj-actions and the reviewdog actions both
+    # travelled that way.
+    cooldown:
+      default-days: 7
+    # One pull request a week for all of them, rather than one per action.
+    groups:
+      actions:
+        patterns:
+          - "*"
