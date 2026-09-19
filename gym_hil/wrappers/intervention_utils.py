@@ -429,7 +429,9 @@ class GamepadControllerHID(InputController):
         devices = hid.enumerate()
         for device in devices:
             device_name = device["product_string"]
-            if any(controller in device_name for controller in ["Logitech", "Xbox", "PS4", "PS5"]):
+            if any(controller in device_name for controller in ["Logitech", "Xbox", "PS4", "PS5", "DUALSHOCK"]):
+                # Store controller type for different HID mappings
+                self.controller_type = "DUALSHOCK" if "DUALSHOCK" in device_name else "Logitech"
                 return device
 
         print("No gamepad found, check the connection and the product string in HID to add your gamepad")
@@ -509,11 +511,15 @@ class GamepadControllerHID(InputController):
                 # Check if RB is pressed then the intervention flag should be set
                 self.intervention_flag = data[6] in [2, 6, 10, 14]
 
-                # Check if RT is pressed
-                self.open_gripper_command = data[6] in [8, 10, 12]
-
-                # Check if LT is pressed
-                self.close_gripper_command = data[6] in [4, 6, 12]
+                # Check triggers based on controller type
+                if hasattr(self, 'controller_type') and self.controller_type == "DUALSHOCK":
+                    # DUALSHOCK 4: L2 is byte 8, R2 is byte 9 (confirmed by testing)
+                    self.close_gripper_command = len(data) > 8 and data[8] > 0   # L2 pressed
+                    self.open_gripper_command = len(data) > 9 and data[9] > 0    # R2 pressed
+                else:
+                    # Logitech and other controllers: use original mapping
+                    self.open_gripper_command = data[6] in [8, 10, 12]
+                    self.close_gripper_command = data[6] in [4, 6, 12]
 
                 # Check if Y/Triangle button (bit 7) is pressed for saving
                 # Check if X/Square button (bit 5) is pressed for failure
