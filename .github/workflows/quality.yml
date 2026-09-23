@@ -32,7 +32,7 @@ jobs:
           echo "RUFF_VERSION=${RUFF_VERSION}" >> $GITHUB_ENV
 
       - name: Install Ruff
-        run: python -m pip install "ruff==${{ env.RUFF_VERSION }}"
+        run: python -m pip install "ruff==${RUFF_VERSION}"
 
       - name: Ruff check
         run: ruff check
