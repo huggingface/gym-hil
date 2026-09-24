@@ -12,8 +12,12 @@ on:
 env:
   PYTHON_VERSION: "3.10"
 
+permissions: {}
+
 jobs:
   style:
+    permissions:
+      contents: read
     name: Style
     runs-on: ubuntu-latest
     steps:
@@ -42,6 +46,8 @@ jobs:
 
 
   poetry_check:
+    permissions:
+      contents: read
     name: Poetry check
     runs-on: ubuntu-latest
     steps:
